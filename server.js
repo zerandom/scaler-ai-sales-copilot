@@ -633,15 +633,21 @@ async function generateLeadAsset({ leadProfile, transcript, insights, evidence, 
   }
 
   const prompt = [
-    "You are creating a comprehensive, highly personalized 2-3 page post-call Scaler follow-up PDF.",
-    "Requirements:",
-    "1. Address each of the lead's explicit and implicit questions specifically, using grounded evidence (curriculum detail, alumni outcomes, ROI reasoning).",
-    "2. Frame Scaler's strength entirely through the lens of this lead's specific goals. No generic marketing.",
-    "3. The output must be visibly unique to this lead's situation and tone.",
-    "4. Generate at least 5 to 7 detailed sections to ensure a robust 2-3 page document.",
-    "5. Use only grounded evidence provided. Do not include an explicit 'Evidence' section; weave it naturally.",
-    "Return JSON with keys:",
-    "cover_message (short personalized WhatsApp message), hero_title (uppercase, highly specific to lead), subtitle, goal_summary (e.g. 'TCS Software Engineer -> Product Company AI Engineer'), sections (array of 5-7 {heading, body, bullets}), next_step_title, next_step_body.",
+    "You are creating a 6-slide personalized Scaler career plan PDF for a post-call follow-up.",
+    "Return ONLY valid JSON with these exact keys:",
+    "cover_message: short personalized WhatsApp message (string)",
+    "subtitle: one line tagline for the cover (string)",
+    "situation_items: exactly 4 objects {icon_letter (1 char), title, description} describing where the lead stands today",
+    "goals: exactly 3 objects {icon_letter (1-2 chars), title, description} representing their career goals",
+    "target_roles: array of 4-6 job title strings they are targeting",
+    "pull_quote: one powerful sentence about their career journey (string)",
+    "questions_answered: exactly 3 objects {icon_letter (1-2 chars), question (the lead's real concern as a quote), answer (direct 1-2 sentence answer)}",
+    "bottom_line: one crisp sentence summarizing the program fit (string)",
+    "why_scaler_features: exactly 6 objects {icon_letter (1-2 chars), title, description} for why Scaler fits this lead",
+    "next_step_title: title for the CTA slide (string)",
+    "next_step_body: 1-2 sentence description of the assessment (string)",
+    "why_take_it: exactly 4 short strings (checklist items for why to take the assessment)",
+    "Use only grounded evidence. Be specific to this lead. No generic marketing.",
     `Lead: ${JSON.stringify(leadProfile)}`,
     `Persona strategy: ${JSON.stringify(strategy)}`,
     `Insights: ${JSON.stringify(insights)}`,
@@ -663,20 +669,25 @@ async function generateLeadAsset({ leadProfile, transcript, insights, evidence, 
       {
         coverMessage:
           typeof parsed.cover_message === "string" ? parsed.cover_message : fallback.coverMessage,
-        heroTitle: typeof parsed.hero_title === "string" ? parsed.hero_title : fallback.heroTitle,
         subtitle: typeof parsed.subtitle === "string" ? parsed.subtitle : fallback.subtitle,
-        goalSummary: typeof parsed.goal_summary === "string" ? parsed.goal_summary : fallback.goalSummary,
-        sections: Array.isArray(parsed.sections) && parsed.sections.length
-          ? parsed.sections
-          : fallback.sections,
+        situationItems: Array.isArray(parsed.situation_items) && parsed.situation_items.length
+          ? parsed.situation_items : fallback.situationItems,
+        goals: Array.isArray(parsed.goals) && parsed.goals.length
+          ? parsed.goals : fallback.goals,
+        targetRoles: Array.isArray(parsed.target_roles) && parsed.target_roles.length
+          ? parsed.target_roles : fallback.targetRoles,
+        pullQuote: typeof parsed.pull_quote === "string" ? parsed.pull_quote : fallback.pullQuote,
+        questionsAnswered: Array.isArray(parsed.questions_answered) && parsed.questions_answered.length
+          ? parsed.questions_answered : fallback.questionsAnswered,
+        bottomLine: typeof parsed.bottom_line === "string" ? parsed.bottom_line : fallback.bottomLine,
+        whyScalerFeatures: Array.isArray(parsed.why_scaler_features) && parsed.why_scaler_features.length
+          ? parsed.why_scaler_features : fallback.whyScalerFeatures,
         nextStepTitle:
-          typeof parsed.next_step_title === "string"
-            ? parsed.next_step_title
-            : fallback.nextStepTitle,
+          typeof parsed.next_step_title === "string" ? parsed.next_step_title : fallback.nextStepTitle,
         nextStepBody:
-          typeof parsed.next_step_body === "string"
-            ? parsed.next_step_body
-            : fallback.nextStepBody,
+          typeof parsed.next_step_body === "string" ? parsed.next_step_body : fallback.nextStepBody,
+        whyTakeIt: Array.isArray(parsed.why_take_it) && parsed.why_take_it.length
+          ? parsed.why_take_it : fallback.whyTakeIt,
       },
       strategy,
       leadProfile,
@@ -688,226 +699,120 @@ async function generateLeadAsset({ leadProfile, transcript, insights, evidence, 
 }
 
 function buildFallbackLeadAsset({ leadProfile, insights, evidence, strategy }) {
+  const first = leadProfile.name.split(" ")[0];
+
   if (strategy.key === "senior-operator") {
     return {
-      coverMessage: `Hi ${leadProfile.name.split(" ")[0]}, sharing a concise summary tailored to the questions you raised around applied depth, instructor credibility, and cohort quality. I've kept it focused on what appears grounded from Scaler's public material.`,
-      heroTitle: "APPLIED AI FOR SENIOR ENGINEERS",
-      subtitle:
-        "A practical read on where structured, evaluated execution may matter more than more theory.",
-      goalSummary: "Senior Software Engineer -> Applied AI Expert",
-      sections: [
-        {
-          heading: "Your bar is already high",
-          body:
-            "You are not evaluating Scaler from a beginner mindset. The real question is whether a program adds applied leverage that is hard to recreate from papers, internal docs, and solo exploration.",
-          bullets: [
-            "You already understand fundamentals and can read technical material independently.",
-            "The bar for value is production relevance, not content volume.",
-          ],
-        },
-        {
-          heading: "Where Scaler appears differentiated",
-          body:
-            "The strongest grounded signals are around evaluated projects, AI-integrated workflows, and guidance from practitioners who are actively building in the industry.",
-          bullets: [
-            "Projects and AI labs are described as integrated into learning, not bolted on later.",
-            "Mentors are framed as active industry professionals rather than purely academic instructors.",
-            "The homepage explicitly mentions building and shipping production AI systems as part of the program's GenAI specialization.",
-          ],
-        },
-        {
-          heading: "Questions still worth pressure-testing live",
-          body:
-            "Some of the highest-value decisions still need a direct follow-up with the BDA or an advisor because they cannot be responsibly inferred from the website alone.",
-          bullets: [
-            "Exact seniority mix of the cohort you would join.",
-            "Specific instructor roster for the current cohort and their production AI background.",
-            "How much of the work is genuinely peer-level versus foundational refresh.",
-          ],
-        },
-        {
-          heading: "The cohort quality argument",
-          body:
-            "For someone at your level, the single biggest risk of a structured program is that the peer group is too junior. Ask directly: what is the median YOE of your batch, and how do they filter for seniority?",
-          bullets: [
-            "Scaler positions the cohort as a filter for serious practitioners, not a mass enrollment.",
-            "Ask for one example of a real peer-level technical discussion or code review from a recent cohort.",
-            "Network value accrues over years — who you learn alongside matters as much as what you learn.",
-          ],
-        },
-        {
-          heading: "Production AI: what the curriculum actually covers",
-          body:
-            "Based on the homepage and GenAI specialization page, the program explicitly covers building, evaluating, and shipping production AI systems — RAG pipelines, LLM evals, and applied agent frameworks. This is different from theory-first ML.",
-          bullets: [
-            "GenAI specialization is described as focused on shipping, not just studying.",
-            "AI labs are module-by-module, not a single capstone bolted at the end.",
-            "Curriculum is updated quarterly, which matters for fast-moving AI tooling.",
-          ],
-        },
-        {
-          heading: "How to evaluate this honestly",
-          body:
-            "The right way to evaluate a program at your level is not through a sales call. Ask for a 30-minute walkthrough of one module, one real project brief, and one mentor profile. If those pass your bar, the rest is worth exploring seriously.",
-          bullets: [
-            "Concrete ask: show me one applied AI lab brief and its evaluation rubric.",
-            "Concrete ask: introduce me to one mentor currently building production AI systems.",
-            "Concrete ask: what percentage of your current cohort has 7+ years of experience?",
-          ],
-        },
+      coverMessage: `Hi ${first}, sharing a focused summary on the questions you raised: applied depth, cohort quality, and where a structured program still adds leverage at your level.`,
+      subtitle: "A practical read on where structured execution adds value beyond self-study.",
+      situationItems: [
+        { icon_letter: "Y", title: `${leadProfile.experience || "7+"} years at ${leadProfile.role || "a tech company"}`, description: "Strong fundamentals and production experience already in place." },
+        { icon_letter: "A", title: "Self-directed AI upskilling", description: "Reading papers, running experiments, exploring models independently." },
+        { icon_letter: "G", title: "Evaluating structured programs", description: "Looking for whether a cohort-based program adds real leverage beyond solo study." },
+        { icon_letter: "Q", title: "Key questions", description: "Cohort seniority, instructor caliber, project depth — are these genuinely at your level?", is_good_news: false },
       ],
-      nextStepTitle: "Recommended next step",
-      nextStepBody:
-        "If you continue the evaluation, ask for one concrete walkthrough of an applied AI project, one example of how feedback is delivered, and one honest explanation of who in the cohort gets the most value.",
+      goals: [
+        { icon_letter: "AI", title: "Lead AI Engineering", description: "Build and own production AI systems end-to-end." },
+        { icon_letter: "P", title: "Practitioner Peer Network", description: "Work alongside engineers who are actively shipping AI." },
+        { icon_letter: "L", title: "Applied Leverage", description: "Go beyond theory to evaluated, shipped production work." },
+      ],
+      targetRoles: ["AI Engineer", "Staff AI Engineer", "ML Platform Engineer", "LLM Systems Engineer"],
+      pullQuote: "It's not about more content — it's about whether the cohort and projects match your current bar.",
+      questionsAnswered: [
+        { icon_letter: "C", question: "Will the cohort be at my level?", answer: "Scaler positions the program as selective. Ask directly for the median YOE of the current batch — this is the clearest signal." },
+        { icon_letter: "AI", question: "Will I actually build production AI systems?", answer: "The GenAI specialization covers RAG pipelines, LLM evals, and agent frameworks. Ask to see one real project brief and its rubric." },
+        { icon_letter: "M", question: "Are the instructors practitioners or academics?", answer: "Mentors are framed as active industry professionals. Ask for one specific instructor and what they have shipped recently." },
+      ],
+      bottomLine: "At your level, the only question worth answering is whether the cohort and applied projects genuinely match your bar.",
+      whyScalerFeatures: [
+        { icon_letter: "C", title: "Industry-Relevant Curriculum", description: "Focused on the exact AI stack product companies are hiring for." },
+        { icon_letter: "P", title: "Practitioner Mentors", description: "Instructors who have built and scaled AI systems in leading tech companies." },
+        { icon_letter: "A", title: "Applied AI Labs", description: "Module-by-module builds — you ship throughout, not just at the capstone." },
+        { icon_letter: "E", title: "Evaluated Projects", description: "Structured feedback on your work, not just passive learning." },
+        { icon_letter: "N", title: "Senior Peer Network", description: "A cohort filtered for serious practitioners, not mass enrollment." },
+        { icon_letter: "Q", title: "Quarterly Curriculum Updates", description: "Fast-moving AI tooling means the curriculum can't afford to be static." },
+      ],
+      nextStepTitle: "Take the Assessment",
+      nextStepBody: "The assessment helps evaluate your current depth and recommend the right cohort. It's the fastest way to see if the peer bar matches yours.",
+      whyTakeIt: ["Understand your applied AI readiness", "See if the cohort matches your level", "Get a concrete module walkthrough", "Make a grounded, data-driven decision"],
     };
   }
 
   if (strategy.key === "career-risk") {
     return {
-      coverMessage: `Hi ${leadProfile.name.split(" ")[0]}, sharing the note I promised. I wrote this to help with the real decision underneath your questions: whether this path feels credible enough to discuss with your family and worth taking seriously for your career.`,
-      heroTitle: "YOUR PRODUCT COMPANY CAREER BEGINS",
-      subtitle:
-        "Not a promise sheet. A grounded summary of what seems real, what still needs confirmation, and how to frame the risk.",
-      goalSummary: "Final Year Student -> Product Company Role",
-      sections: [
-        {
-          heading: "Your decision is bigger than a course",
-          body:
-            "You are comparing certainty today with the possibility of a different long-term career. That means emotional safety and family confidence matter just as much as curriculum details.",
-          bullets: [
-            "A secure offer has real value, especially when family finances are tight.",
-            "Any decision here should be based on clear support structures, not hype.",
-          ],
-        },
-        {
-          heading: "What Scaler seems able to support",
-          body:
-            "The public material emphasizes structured curriculum, mentorship, mock interviews, and career support. Those are useful because they reduce ambiguity when someone is early in their journey.",
-          bullets: [
-            "Structured path through fundamentals, projects, and interview preparation.",
-            "1:1 mentorship and mock interview support are described on the Academy page.",
-            "Career support and a large learner/alumni network are highlighted on the homepage.",
-          ],
-        },
-        {
-          heading: "What should be confirmed before any family decision",
-          body:
-            "There are a few things no responsible summary should guess, and those are exactly the questions to take back to the BDA.",
-          bullets: [
-            "No one should guarantee a job outcome from public website claims alone.",
-            "Specific financing options need to be shared by the team directly.",
-            "The entrance test process and how it is interpreted should be clarified with precision.",
-          ],
-        },
-        {
-          heading: "The entrance test: what it actually means",
-          body:
-            "Feeling nervous about a screening is normal. The entrance assessment is a readiness checkpoint — it helps Scaler place you correctly and helps you understand where to focus first.",
-          bullets: [
-            "Ask the BDA: what percentage of first-time applicants pass the entrance test?",
-            "Ask: what happens if I don't clear it the first time? Is there a retry path?",
-            "The test is a fit signal, not a judgment of your potential.",
-          ],
-        },
-        {
-          heading: "How the financing actually works",
-          body:
-            "₹3.5L is a significant decision and your family deserves written clarity on every term before any commitment is made. Ask for the financing breakdown in writing.",
-          bullets: [
-            "Ask for a written breakdown of every option: upfront, EMI, ISA, or deferred.",
-            "Understand the terms: what counts as a qualifying job, and what happens if placement takes longer.",
-            "No decision that affects family finances should be made under call pressure.",
-          ],
-        },
-        {
-          heading: "The government offer is not the only safe path",
-          body:
-            "Stability and career growth are not mutually exclusive. The right question is not which path is safer — it is which gives you the best chance at the career you actually want.",
-          bullets: [
-            "Government jobs offer stability but limited compensation growth for tech-oriented careers.",
-            "Product company roles offer higher variance but significantly better long-term trajectory.",
-            "You do not have to decide today — but you need the financing and placement terms in writing first.",
-          ],
-        },
+      coverMessage: `Hi ${first}, sharing the note I promised — focused on helping you make a credible decision you can discuss honestly with your family.`,
+      subtitle: "A grounded summary of what's real, what needs confirmation, and how to frame the risk.",
+      situationItems: [
+        { icon_letter: "S", title: `${leadProfile.role || "Final year student"} at a crossroads`, description: "Weighing a secure offer against the possibility of a better long-term career path." },
+        { icon_letter: "F", title: "Family confidence matters", description: "The decision needs to feel credible to your family, not just to you." },
+        { icon_letter: "T", title: "Entrance test concern", description: "Nervous about the screening process and what it means for your candidacy." },
+        { icon_letter: "R", title: "The good news", description: "You don't need certainty today — you need the right information to decide clearly.", is_good_news: true },
       ],
-      nextStepTitle: "Before you decide anything",
-      nextStepBody:
-        "Get written answers to three things: the exact financing terms available to you, the entrance test retry policy, and what career support looks like after the program ends. With those in hand you will be able to have an honest conversation with your family.",
+      goals: [
+        { icon_letter: "P", title: "Product Company Role", description: "Transition from a service-based path to a product-oriented career." },
+        { icon_letter: "S", title: "Salary & Growth", description: "Meaningful compensation improvement with a clear upward trajectory." },
+        { icon_letter: "C", title: "Family Confidence", description: "A path credible enough to discuss honestly with your family." },
+      ],
+      targetRoles: ["Software Engineer (Product)", "Backend Engineer", "Full Stack Engineer", "Associate Engineer (AI/ML)"],
+      pullQuote: "Stability and career growth are not mutually exclusive — but you need the financing terms in writing before any decision.",
+      questionsAnswered: [
+        { icon_letter: "R", question: "Is the ROI worth giving up a secure offer?", answer: "The ROI is in the long-term trajectory, not just the next offer. Product company roles compound over time — but only if placement and financing terms are transparent and confirmed." },
+        { icon_letter: "T", question: "What happens if I don't clear the entrance test?", answer: "Ask the BDA directly: what percentage of first-time applicants pass, and is there a retry path? The test is a readiness checkpoint, not a final verdict on your potential." },
+        { icon_letter: "$", question: "How does the financing actually work?", answer: "Get the full breakdown in writing — upfront, EMI, ISA options, and what counts as a qualifying placement. No family decision should be made without written clarity on every term." },
+      ],
+      bottomLine: "Get written answers on financing and placement terms first — then you'll have everything you need for an honest conversation with your family.",
+      whyScalerFeatures: [
+        { icon_letter: "C", title: "Structured Learning Path", description: "Clear progression from fundamentals through projects and interview prep." },
+        { icon_letter: "M", title: "1:1 Mentorship", description: "Personal guidance from practitioners, not just recorded lectures." },
+        { icon_letter: "I", title: "Mock Interview Support", description: "Resume, interview, and referral support to help you land the right role." },
+        { icon_letter: "N", title: "Learner Network", description: "A large community of engineers on the same journey." },
+        { icon_letter: "F", title: "Financing Options", description: "Multiple payment structures — confirm the exact terms in writing." },
+        { icon_letter: "O", title: "Proven Outcomes", description: "Reported alumni outcomes — treat as signals, not personal guarantees." },
+      ],
+      nextStepTitle: "Take the Assessment",
+      nextStepBody: "The assessment identifies your current level and recommends the right learning path. It's also your clearest signal of whether this program is the right fit right now.",
+      whyTakeIt: ["Know exactly where you stand", "Get a personalized learning roadmap", "Understand your batch fit before deciding", "Move one step closer to a confident decision"],
     };
   }
 
   return {
-    coverMessage: `Hi ${leadProfile.name.split(" ")[0]}, sharing a personalized summary from our call. I focused this on the jump you want to make, the questions you raised about ROI and practical AI depth, and the areas that seem grounded from Scaler's public material.`,
-    heroTitle: "YOUR PATH TO PRODUCT & AI ROLES",
-    subtitle:
-      "A direct summary of what appears useful, where the structure may help, and what still needs a precise follow-up.",
-    goalSummary: "Service Software Engineer -> Product Company AI Engineer",
-    sections: [
-      {
-        heading: "What you are trying to change",
-        body:
-          "This is not just about learning more content. It is about changing the type of work you can credibly do next and making sure the time and money invested actually move your career forward.",
-        bullets: [
-          "You want more product-oriented, applied engineering work.",
-          "You care whether the upside is meaningful enough to justify the cost.",
-        ],
-      },
-      {
-        heading: "What Scaler appears to emphasize",
-        body:
-          "The strongest public signals are around structured depth, evaluated practice, mentorship, and AI-specialized execution rather than passive lecture consumption.",
-        bullets: [
-          "AI-integrated curriculum with updates described as ongoing.",
-          "Generative AI specialization on the homepage mentions building, evaluating, and shipping production AI systems.",
-          "Projects and AI labs are described as part of the learning flow.",
-        ],
-      },
-      {
-        heading: "How to think about the free-vs-paid question",
-        body:
-          "Free content can absolutely teach concepts. The argument for a program has to be about structure, feedback, practical execution, and accountability. If those are not meaningfully stronger, the premium is hard to justify.",
-        bullets: [
-          "Use Scaler only if the applied workflow and review loop are genuinely stronger for your use case.",
-          "Ask for concrete examples of projects and mentor feedback before deciding.",
-        ],
-      },
-      {
-        heading: "ROI: the salary math done honestly",
-        body:
-          "Going from service work to a product company at the right salary tier is not just an increment — it is a category change. The ROI is in compounding trajectory, not just the next offer letter.",
-        bullets: [
-          "Scaler's 2024 cohort outcomes are reported on the homepage — treat them as signals, not personal promises.",
-          "If the program accelerates your product-company transition by 18 months, the lifetime earning difference dwarfs the program cost.",
-          "The honest caveat: outcomes depend on your execution during and after the program, not just enrollment.",
-        ],
-      },
-      {
-        heading: "What you would actually build",
-        body:
-          "The GenAI specialization described on Scaler's homepage covers RAG pipelines, LLM evaluation frameworks, and agent-based architectures — the exact stack that product companies are hiring for right now.",
-        bullets: [
-          "RAG systems: retrieval-augmented generation pipelines powering real production search and Q&A products.",
-          "LLM evals: building evaluation harnesses to measure and improve model outputs.",
-          "Agent frameworks: multi-step reasoning systems that connect LLMs to tools and APIs.",
-          "AI labs are module-by-module — you build throughout the program, not just at the end.",
-        ],
-      },
-      {
-        heading: "Mentor and peer quality: what to verify",
-        body:
-          "The weakest part of any structured program is when mentors are academics or peers are too junior. These are worth verifying directly before you commit.",
-        bullets: [
-          "Ask: who are the specific mentors for the AI Engineering track, and what have they shipped recently?",
-          "Ask: what is the median years of experience of learners in the current cohort?",
-          "Ask: can I speak to one alumnus who transitioned from a similar service company background?",
-        ],
-      },
+    coverMessage: `Hi ${first}, sharing a personalized summary from our call — focused on the move you want to make into product and AI roles, and where Scaler appears to add real leverage.`,
+    subtitle: "Built for your goals. Backed by real outcomes.",
+    situationItems: [
+      { icon_letter: "R", title: `${leadProfile.experience || "4 years"} at ${leadProfile.role || "a service company"}`, description: "Working on backend systems with strong fundamentals and production experience." },
+      { icon_letter: "A", title: "Actively upskilling", description: "Completed AWS certification — a clear signal of your intent to grow." },
+      { icon_letter: "C", title: "Career crossroads", description: "Ready to move from service-based to product company and AI-driven roles." },
+      { icon_letter: "G", title: "The good news", description: "You already have the right foundation. You don't need to start from scratch — you need the right direction and depth.", is_good_news: true },
     ],
-    nextStepTitle: "What to do next",
-    nextStepBody:
-      "Ask for one concrete example of the type of applied AI project you would build, one truthful explanation of typical learner outcomes, and one precise answer on where the program adds leverage beyond free resources.",
+    goals: [
+      { icon_letter: "P", title: "Move to Product Companies", description: "Transition from service-based to product-oriented organizations." },
+      { icon_letter: "AI", title: "Become an AI Engineer", description: "Work on cutting-edge AI systems, LLMs, and intelligent applications." },
+      { icon_letter: "S", title: "Better Career & Salary Growth", description: "Improve your earning potential and long-term career trajectory." },
+    ],
+    targetRoles: ["AI Engineer", "ML Engineer", "Backend Engineer (AI/ML)", "Applied AI Engineer", "LLM Engineer", "Data Engineer (AI Focused)"],
+    pullQuote: "It's not just about a job change. It's about building a career that compounds over the next 5-10 years.",
+    questionsAnswered: [
+      { icon_letter: "F", question: "Why not just learn from free resources like Andrew Ng courses?", answer: "Content is available, but structure, depth, mentorship, peer group and real-world projects make the real difference in career transition." },
+      { icon_letter: "$", question: "Is the ROI worth 3.5L?", answer: "The real ROI is not just in salary jump (14 to 16 LPA) — it's the shift from service-based to product-based roles, which compounds over your career." },
+      { icon_letter: "C", question: "Will I learn practical AI or just theory?", answer: "The program focuses on building production-ready AI systems — RAG, Agents, Evaluation, and more. You build throughout, not just at the end." },
+    ],
+    bottomLine: "This program is designed for engineers like you who want to build, ship, and lead AI products — not just learn concepts.",
+    whyScalerFeatures: [
+      { icon_letter: "C", title: "Industry-Relevant Curriculum", description: "Focused on the skills top product companies are hiring for." },
+      { icon_letter: "P", title: "Learn from Top Practitioners", description: "Instructors who have built and scaled AI systems in leading tech companies." },
+      { icon_letter: "G", title: "Strong Peer Community", description: "Learn and grow with driven engineers on the same career journey." },
+      { icon_letter: "AI", title: "Build Real AI Systems", description: "Hands-on projects with LLMs, Agents, RAG, Vector DBs and more." },
+      { icon_letter: "S", title: "Career Support That Works", description: "Resume, interviews, referrals and mock interviews to help you land the role." },
+      { icon_letter: "O", title: "Proven Outcomes", description: "Our learners see significant career growth and role transitions." },
+    ],
+    nextStepTitle: "Take the Assessment",
+    nextStepBody: "The assessment helps us understand your current level and recommend the right learning path for you.",
+    whyTakeIt: ["Know where you stand", "Identify your strengths and gaps", "Get a tailored learning roadmap", "Move one step closer to your goal"],
   };
 }
+
+
+
 
 async function materializeLeadAsset(assetData, strategy, leadProfile, evidence) {
   const previewHtml = renderPreviewHtml(assetData, strategy, leadProfile, evidence);
@@ -920,224 +825,413 @@ async function materializeLeadAsset(assetData, strategy, leadProfile, evidence) 
   };
 }
 
-function renderPreviewHtml(assetData, strategy, leadProfile, evidence) {
-  const [primary, secondary, surface] = strategy.palette;
-  const sectionsHtml = assetData.sections
-    .map(
-      (section) => `
-        <section class="preview-section">
-          <h3>${escapeHtml(section.heading)}</h3>
-          <p>${escapeHtml(section.body)}</p>
-          ${
-            section.bullets?.length
-              ? `<ul>${section.bullets
-                  .map((bullet) => `<li>${escapeHtml(bullet)}</li>`)
-                  .join("")}</ul>`
-              : ""
-          }
-        </section>
-      `
-    )
-    .join("");
-
+function renderPreviewHtml(assetData, strategy, leadProfile) {
+  const [primary] = strategy.palette;
+  const items = [
+    ...(assetData.situationItems || []).map(it => `<li><strong>${escapeHtml(it.title)}</strong>: ${escapeHtml(it.description)}</li>`),
+    ...(assetData.goals || []).map(g => `<li><strong>${escapeHtml(g.title)}</strong>: ${escapeHtml(g.description)}</li>`),
+    ...(assetData.questionsAnswered || []).map(q => `<li><strong>${escapeHtml(q.question)}</strong> — ${escapeHtml(q.answer)}</li>`),
+    ...(assetData.whyScalerFeatures || []).map(f => `<li><strong>${escapeHtml(f.title)}</strong>: ${escapeHtml(f.description)}</li>`),
+  ];
   return `
-    <div class="pdf-preview-shell" style="--primary:${primary};--secondary:${secondary};--surface:${surface}">
+    <div class="pdf-preview-shell" style="--primary:${primary}">
       <header class="pdf-preview-hero">
-        <p class="eyebrow">${escapeHtml(strategy.heroLabel)}</p>
-        <h1>${escapeHtml(assetData.heroTitle)}</h1>
-        <p class="subtitle">${escapeHtml(assetData.subtitle)}</p>
+        <p class="eyebrow">${escapeHtml(strategy.heroLabel || "Your Career Plan")}</p>
+        <h1>${escapeHtml(leadProfile.name)}</h1>
+        <p class="subtitle">${escapeHtml(assetData.subtitle || "")}</p>
         <div class="identity">
-          <span>${escapeHtml(leadProfile.name)}</span>
           <span>${escapeHtml(leadProfile.role || "Lead profile")}</span>
-          <span>${escapeHtml(leadProfile.experience || "Experience not provided")}</span>
+          <span>${escapeHtml(leadProfile.experience || "")}</span>
         </div>
       </header>
-      <main>${sectionsHtml}</main>
+      <main><ul>${items.join("")}</ul></main>
       <section class="preview-section">
-        <h3>${escapeHtml(assetData.nextStepTitle)}</h3>
-        <p>${escapeHtml(assetData.nextStepBody)}</p>
+        <h3>${escapeHtml(assetData.nextStepTitle || "Next Step")}</h3>
+        <p>${escapeHtml(assetData.nextStepBody || "")}</p>
       </section>
     </div>
   `;
 }
 
+
 async function renderPdf(assetData, strategy, leadProfile) {
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const italic = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
 
-  // Scaler Brand Colors
-  const primary = rgb(14 / 255, 34 / 255, 56 / 255);    // #0e2238 (Dark Navy)
-  const secondary = rgb(25 / 255, 60 / 255, 100 / 255); // Slightly lighter navy
-  const scalerOrange = rgb(1, 0.42, 0.13);              // #FF6B22
-  const ctaYellow = rgb(245 / 255, 185 / 255, 66 / 255); // #F5B942 (Warm Yellow)
-  const white = rgb(1, 1, 1);
-  const darkText = rgb(0.1, 0.1, 0.1);
-  const cardBg = rgb(0.95, 0.96, 0.98); // Very light blue/grey
-  const cardStroke = rgb(0.85, 0.88, 0.92);
+  // A4 Landscape
+  const W = 841;
+  const H = 595;
+  const M = 40; // margin
 
-  const W = 430;   // iPhone Pro Max width
-  const H = 932;   // iPhone Pro Max height
-  const MARGIN = 24;
-  const CONTENT_W = W - MARGIN * 2;
+  // Color palette
+  const navy   = rgb(14/255, 34/255, 56/255);
+  const blue   = rgb(26/255, 58/255, 107/255);
+  const white  = rgb(1, 1, 1);
+  const light  = rgb(245/255, 247/255, 251/255);
+  const bodyTxt = rgb(26/255, 26/255, 46/255);
+  const gray   = rgb(107/255, 114/255, 128/255);
+  const orange = rgb(232/255, 83/255, 26/255);
+  const chipBg = rgb(232/255, 240/255, 254/255);
+  const chipTx = rgb(26/255, 58/255, 107/255);
+  const green  = rgb(52/255, 168/255, 83/255);
+  const cardBg = rgb(248/255, 249/255, 252/255);
 
-  function newPage(pageNum) {
+  // ── helpers ──────────────────────────────────────────────────────────────
+  function r(page, x, y, w, h, color) {
+    page.drawRectangle({ x, y, width: w, height: h, color });
+  }
+  function ctr(page, txt, x, avail, y, size, f, color) {
+    const tw = f.widthOfTextAtSize(txt, size);
+    page.drawText(txt, { x: x + Math.max(0, (avail - tw) / 2), y, size, font: f, color });
+  }
+  function circ(page, cx, cy, radius, color) {
+    page.drawCircle({ x: cx, y: cy, size: radius, color });
+  }
+  function iconCircle(page, cx, cy, radius, letter, bg, fg) {
+    circ(page, cx, cy, radius, bg);
+    const s = Math.max(6, radius * 0.75);
+    const tw = bold.widthOfTextAtSize(letter, s);
+    page.drawText(letter, { x: cx - tw / 2, y: cy - s * 0.38, size: s, font: bold, color: fg });
+  }
+  function pill(page, x, y, txt, f, size = 9) {
+    const tw = f.widthOfTextAtSize(txt, size);
+    const pw = tw + 14; const ph = size + 7;
+    r(page, x, y, pw, ph, chipBg);
+    page.drawText(txt, { x: x + 7, y: y + 4, size, font: f, color: chipTx });
+    return pw;
+  }
+  function slideHeader(page, num, title, sub) {
+    const bsz = 32;
+    r(page, M, H - M - bsz, bsz, bsz, navy);
+    ctr(page, num, M, bsz, H - M - bsz + 9, 13, bold, white);
+    page.drawText(title, { x: M + bsz + 10, y: H - M - 22, size: 18, font: bold, color: bodyTxt });
+    if (sub) page.drawText(sub, { x: M + bsz + 10, y: H - M - 38, size: 10, font, color: gray });
+  }
+  function pageNum(page, n) {
+    const tw = font.widthOfTextAtSize(String(n), 9);
+    page.drawText(String(n), { x: W - M - tw, y: 14, size: 9, font, color: gray });
+  }
+
+  // ── mountain illustration ─────────────────────────────────────────────────
+  function drawMountain(page, ox, oy, w, h) {
+    const baseY = oy + h * 0.12;
+    const peakX = ox + w * 0.52;
+    const peakY = oy + h * 0.82;
+    const sm1X  = ox + w * 0.28;
+    const sm1Y  = oy + h * 0.58;
+    // large mountain
+    page.drawLine({ start: {x: ox + w*0.08, y: baseY}, end: {x: peakX, y: peakY}, thickness: 2, color: navy });
+    page.drawLine({ start: {x: ox + w*0.92, y: baseY}, end: {x: peakX, y: peakY}, thickness: 2, color: navy });
+    // small left peak
+    page.drawLine({ start: {x: ox + w*0.05, y: baseY}, end: {x: sm1X, y: sm1Y}, thickness: 1.5, color: blue });
+    page.drawLine({ start: {x: ox + w*0.46, y: baseY}, end: {x: sm1X, y: sm1Y}, thickness: 1.5, color: blue });
+    // path dots
+    const pts = [
+      [ox + w*0.24, baseY + h*0.04],
+      [ox + w*0.33, baseY + h*0.16],
+      [ox + w*0.40, baseY + h*0.28],
+      [ox + w*0.46, baseY + h*0.44],
+      [peakX, peakY],
+    ];
+    for (const [px, py] of pts) circ(page, px, py, 4, navy);
+    // flag pole + flag
+    page.drawLine({ start: {x: peakX, y: peakY}, end: {x: peakX, y: peakY + 22}, thickness: 1.5, color: navy });
+    r(page, peakX, peakY + 12, 14, 10, orange);
+    // person (stick figure)
+    const px2 = ox + w*0.76, py2 = baseY + h*0.06;
+    circ(page, px2, py2 + 13, 5, blue);
+    page.drawLine({ start: {x: px2, y: py2+8}, end: {x: px2, y: py2-4}, thickness: 1.5, color: blue });
+    page.drawLine({ start: {x: px2-5, y: py2+2}, end: {x: px2+5, y: py2+2}, thickness: 1.5, color: blue });
+    page.drawLine({ start: {x: px2, y: py2-4}, end: {x: px2-4, y: py2-12}, thickness: 1.5, color: blue });
+    page.drawLine({ start: {x: px2, y: py2-4}, end: {x: px2+4, y: py2-12}, thickness: 1.5, color: blue });
+    // horizon line
+    page.drawLine({ start: {x: ox, y: baseY}, end: {x: ox+w, y: baseY}, thickness: 0.5, color: chipBg });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SLIDE 1 — COVER
+  // ══════════════════════════════════════════════════════════════════════════
+  {
     const pg = pdfDoc.addPage([W, H]);
-    // Top subtle bar
-    drawRect(pg, 0, H - 4, W, 4, primary);
-    // Footer
-    drawRect(pg, 0, 0, W, 24, cardBg);
-    pg.drawText("SCALER", { x: MARGIN, y: 8, size: 8, font: bold, color: scalerOrange });
-    pg.drawText(`Personalized for ${leadProfile.name}`, { x: MARGIN + 45, y: 8, size: 7, font, color: rgb(0.5, 0.5, 0.5) });
-    pg.drawText(`Page ${pageNum}`, { x: W - MARGIN - 24, y: 8, size: 7, font, color: rgb(0.5, 0.5, 0.5) });
-    return pg;
-  }
+    const leftW = 290;
+    r(pg, 0, 0, leftW, H, navy);
+    r(pg, leftW, 0, W - leftW, H, light);
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // PAGE 1 — Cover / Hero
-  // ──────────────────────────────────────────────────────────────────────────
-  let page = pdfDoc.addPage([W, H]);
-  let pageNum = 1;
+    // logo
+    pg.drawText("SCALER", { x: M, y: H - M - 6, size: 15, font: bold, color: white });
+    r(pg, M + bold.widthOfTextAtSize("SCALER", 15) + 4, H - M - 6, 10, 12, orange);
 
-  // Full-bleed dark hero background
-  const heroHeight = 260;
-  drawRect(page, 0, H - heroHeight, W, heroHeight, primary);
-
-  // Top header with Logo & Name
-  page.drawText("SCALER", { x: MARGIN, y: H - 36, size: 14, font: bold, color: white });
-  const nameW = font.widthOfTextAtSize(leadProfile.name, 10);
-  page.drawText(leadProfile.name, { x: W - MARGIN - nameW, y: H - 34, size: 10, font, color: rgb(0.8, 0.8, 0.8) });
-
-  // Hero Title
-  const heroLines = wrapText(assetData.heroTitle, bold, 26, CONTENT_W);
-  let heroY = H - 90;
-  for (const line of heroLines) {
-    page.drawText(line, { x: MARGIN, y: heroY, size: 26, font: bold, color: white });
-    heroY -= 30;
-  }
-
-  // Gold accent bar under title
-  heroY -= 10;
-  drawRect(page, MARGIN, heroY, 60, 4, ctaYellow);
-
-  // Subtitle
-  heroY -= 20;
-  const subLines = wrapText(assetData.subtitle || "", font, 12, CONTENT_W - 20);
-  for (const line of subLines) {
-    page.drawText(line, { x: MARGIN, y: heroY, size: 12, font, color: rgb(0.85, 0.85, 0.85) });
-    heroY -= 16;
-  }
-
-  // ── The "Goal" Box ────────────────────────────────────────────────────────
-  let y = H - heroHeight - 30;
-
-  if (assetData.goalSummary) {
-    page.drawText("Goal", { x: MARGIN, y, size: 14, font: bold, color: darkText });
-    y -= 14;
-
-    const goalLines = wrapText(assetData.goalSummary, bold, 14, CONTENT_W - 24);
-    const goalBoxH = 24 + goalLines.length * 18;
-    y -= goalBoxH;
-
-    // Draw light blue goal box with border
-    drawRect(page, MARGIN, y, CONTENT_W, goalBoxH, cardBg);
-    page.drawRectangle({ x: MARGIN, y, width: CONTENT_W, height: goalBoxH, borderColor: cardStroke, borderWidth: 1 });
-    
-    let gTextY = y + goalBoxH - 22;
-    for (const gLine of goalLines) {
-      page.drawText(gLine, { x: MARGIN + 12, y: gTextY, size: 14, font: bold, color: darkText });
-      gTextY -= 18;
+    // hero headline
+    let hy = H - M - 58;
+    for (const line of ["Your Personalized", "Career Plan"]) {
+      pg.drawText(line, { x: M, y: hy, size: 24, font: bold, color: white });
+      hy -= 30;
     }
-    y -= 40;
-  } else {
-    y -= 10;
-  }
-
-  // Footer on page 1
-  drawRect(page, 0, 0, W, 24, cardBg);
-  page.drawText("SCALER", { x: MARGIN, y: 8, size: 8, font: bold, color: scalerOrange });
-  page.drawText(`Personalized for ${leadProfile.name}`, { x: MARGIN + 45, y: 8, size: 7, font, color: rgb(0.5, 0.5, 0.5) });
-  page.drawText(`Page 1`, { x: W - MARGIN - 24, y: 8, size: 7, font, color: rgb(0.5, 0.5, 0.5) });
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // Sections (Card style)
-  // ──────────────────────────────────────────────────────────────────────────
-  for (const section of assetData.sections) {
-    const bodyLines = wrapText(section.body || "", font, 11, CONTENT_W - 24);
-    const bulletLines = (section.bullets || []).flatMap((b) => wrapText(`• ${b}`, font, 11, CONTENT_W - 36));
-    
-    // Header height (30), body padding top/bottom (30), body lines, bullet lines
-    const cardH = 34 + 16 + (bodyLines.length * 15) + (bulletLines.length ? bulletLines.length * 15 + 10 : 0) + 16;
-
-    if (y - cardH < 50) {
-      pageNum++;
-      page = newPage(pageNum);
-      y = H - 50;
+    // tagline
+    hy -= 6;
+    for (const line of wrapText(assetData.subtitle || "Built for your goals. Backed by real outcomes.", font, 10, leftW - M * 2)) {
+      pg.drawText(line, { x: M, y: hy, size: 10, font, color: rgb(0.82,0.82,0.82) });
+      hy -= 14;
     }
-
-    // Card Body Background
-    drawRect(page, MARGIN, y - cardH, CONTENT_W, cardH, cardBg);
-    page.drawRectangle({ x: MARGIN, y: y - cardH, width: CONTENT_W, height: cardH, borderColor: cardStroke, borderWidth: 1 });
-
-    // Card Navy Header
-    drawRect(page, MARGIN, y - 34, CONTENT_W, 34, primary);
-    const headLines = wrapText(section.heading.toUpperCase(), bold, 11, CONTENT_W - 24);
-    page.drawText(headLines[0], { x: MARGIN + 12, y: y - 22, size: 11, font: bold, color: white });
-
-    // Body Text
-    let textY = y - 34 - 20;
-    for (const line of bodyLines) {
-      page.drawText(line, { x: MARGIN + 12, y: textY, size: 11, font, color: darkText });
-      textY -= 15;
-    }
-
-    // Bullets
-    if (bulletLines.length) {
-      textY -= 8;
-      for (const bLine of bulletLines) {
-        page.drawText(bLine, { x: MARGIN + 16, y: textY, size: 11, font, color: darkText });
-        textY -= 15;
+    // prepared for
+    hy -= 16;
+    pg.drawText("Prepared for", { x: M, y: hy, size: 9, font, color: rgb(0.65,0.65,0.65) });
+    hy -= 20;
+    pg.drawText(leadProfile.name, { x: M, y: hy, size: 16, font: bold, color: white });
+    hy -= 18;
+    const roleExp = [leadProfile.role, leadProfile.experience].filter(Boolean).join("  •  ");
+    if (roleExp) {
+      for (const line of wrapText(roleExp, font, 9, leftW - M * 2)) {
+        pg.drawText(line, { x: M, y: hy, size: 9, font, color: rgb(0.72,0.72,0.72) });
+        hy -= 13;
       }
     }
+    // "Based on your conversation" note
+    hy -= 14;
+    pg.drawText("Based on your conversation", { x: M, y: hy, size: 8, font, color: rgb(0.55,0.55,0.55) });
+    hy -= 11;
+    pg.drawText("with your Scaler BDA", { x: M, y: hy, size: 8, font, color: rgb(0.55,0.55,0.55) });
 
-    y = y - cardH - 24;
+    // CTA card at bottom
+    const ctaBoxY = 30, ctaBoxH = 72, ctaBoxW = leftW - M * 2;
+    r(pg, M, ctaBoxY, ctaBoxW, ctaBoxH, rgb(1,1,1));
+    r(pg, M, ctaBoxY, 3, ctaBoxH, orange);
+    pg.drawText("Next Step", { x: M + 12, y: ctaBoxY + ctaBoxH - 18, size: 10, font: bold, color: navy });
+    for (const line of wrapText("Take the assessment to unlock the right path for you.", font, 8, ctaBoxW - 20)) {
+      pg.drawText(line, { x: M + 12, y: ctaBoxY + ctaBoxH - 33, size: 8, font, color: gray });
+    }
+
+    // mountain
+    drawMountain(pg, leftW + 10, 30, W - leftW - 20, H - 60);
+    pageNum(pg, 1);
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Big Yellow CTA Button
-  // ──────────────────────────────────────────────────────────────────────────
-  const ctaTitleLines = wrapText(assetData.nextStepTitle.toUpperCase(), bold, 14, CONTENT_W - 40);
-  const ctaBodyLines = wrapText(assetData.nextStepBody, font, 11, CONTENT_W);
-  const ctaTotalH = (ctaTitleLines.length * 18) + (ctaBodyLines.length * 15) + 60;
+  // ══════════════════════════════════════════════════════════════════════════
+  // SLIDE 2 — WHERE YOU STAND TODAY
+  // ══════════════════════════════════════════════════════════════════════════
+  {
+    const pg = pdfDoc.addPage([W, H]);
+    r(pg, 0, 0, W, H, white);
+    slideHeader(pg, "01", "Where You Stand Today", "A snapshot of your current situation");
 
-  if (y - ctaTotalH < 50) {
-    pageNum++;
-    page = newPage(pageNum);
-    y = H - 50;
+    const items = (assetData.situationItems || []).slice(0, 5);
+    const startY = H - M - 75;
+    const itemH  = Math.min(90, (startY - M - 20) / Math.max(items.length, 1));
+    const textX  = M + 50;
+    const textW  = W - textX - M;
+
+    items.forEach((item, i) => {
+      const iy = startY - i * itemH;
+      const letter = (item.icon_letter || item.title.charAt(0)).toUpperCase().substring(0,2);
+      iconCircle(pg, M + 20, iy - 6, 16, letter, item.is_good_news ? rgb(0.9,0.97,0.92) : light, item.is_good_news ? green : blue);
+      pg.drawText(item.title, { x: textX, y: iy, size: 11, font: bold, color: bodyTxt });
+      let dy = iy - 14;
+      for (const ln of wrapText(item.description || "", font, 9, textW).slice(0, 3)) {
+        pg.drawText(ln, { x: textX, y: dy, size: 9, font, color: gray });
+        dy -= 12;
+      }
+      if (i < items.length - 1)
+        pg.drawLine({ start: {x: textX, y: iy - itemH + 10}, end: {x: W - M, y: iy - itemH + 10}, thickness: 0.5, color: chipBg });
+    });
+    pageNum(pg, 2);
   }
 
-  // Draw CTA Body
-  let ctaY = y - 10;
-  for (const line of ctaBodyLines) {
-    const w = font.widthOfTextAtSize(line, 11);
-    page.drawText(line, { x: (W - w) / 2, y: ctaY, size: 11, font, color: darkText });
-    ctaY -= 15;
+  // ══════════════════════════════════════════════════════════════════════════
+  // SLIDE 3 — YOUR GOALS
+  // ══════════════════════════════════════════════════════════════════════════
+  {
+    const pg = pdfDoc.addPage([W, H]);
+    r(pg, 0, 0, W, H, white);
+    slideHeader(pg, "02", "Your Goals", "What you want to achieve next");
+
+    const goals = (assetData.goals || []).slice(0, 3);
+    const cardsY = H - M - 75;
+    const cardW  = Math.floor((W - M * 2 - 24) / 3);
+    const cardH  = 120;
+
+    goals.forEach((goal, i) => {
+      const cx = M + i * (cardW + 12);
+      r(pg, cx, cardsY - cardH, cardW, cardH, light);
+      const letter = (goal.icon_letter || goal.title.charAt(0)).toUpperCase().substring(0,2);
+      iconCircle(pg, cx + cardW / 2, cardsY - 24, 16, letter, blue, white);
+      const tLines = wrapText(goal.title, bold, 10, cardW - 12).slice(0, 2);
+      let ty = cardsY - 52;
+      for (const l of tLines) { ctr(pg, l, cx, cardW, ty, 10, bold, bodyTxt); ty -= 13; }
+      for (const l of wrapText(goal.description || "", font, 8, cardW - 12).slice(0, 3)) {
+        ctr(pg, l, cx, cardW, ty, 8, font, gray); ty -= 11;
+      }
+    });
+
+    // Role pills
+    let ry = cardsY - cardH - 22;
+    pg.drawText("Roles you are targeting", { x: M, y: ry, size: 10, font: bold, color: bodyTxt });
+    ry -= 18;
+    let pillX = M;
+    for (const role of (assetData.targetRoles || [])) {
+      const pw = font.widthOfTextAtSize(role, 9) + 14;
+      if (pillX + pw > W - M) { pillX = M; ry -= 22; }
+      pill(pg, pillX, ry, role, font, 9);
+      pillX += pw + 8;
+    }
+
+    // Pull quote
+    ry -= 36;
+    if (assetData.pullQuote && ry > M + 20) {
+      pg.drawText("\u201C", { x: M, y: ry, size: 20, font: bold, color: navy });
+      let qy = ry - 2;
+      for (const l of wrapText(assetData.pullQuote, font, 9, W - M * 2 - 22).slice(0, 2)) {
+        pg.drawText(l, { x: M + 18, y: qy, size: 9, font, color: bodyTxt }); qy -= 13;
+      }
+    }
+    pageNum(pg, 3);
   }
 
-  ctaY -= 15;
-  const btnH = 48 + (ctaTitleLines.length - 1) * 18;
-  drawRect(page, MARGIN, ctaY - btnH, CONTENT_W, btnH, ctaYellow);
+  // ══════════════════════════════════════════════════════════════════════════
+  // SLIDE 4 — YOUR KEY QUESTIONS, ANSWERED
+  // ══════════════════════════════════════════════════════════════════════════
+  {
+    const pg = pdfDoc.addPage([W, H]);
+    r(pg, 0, 0, W, H, white);
+    slideHeader(pg, "03", "Your Key Questions, Answered", "Honest answers to what matters most to you");
 
-  let btnTextY = ctaY - 28 + (ctaTitleLines.length > 1 ? 9 : 0);
-  for (const line of ctaTitleLines) {
-    const w = bold.widthOfTextAtSize(line, 14);
-    page.drawText(line, { x: (W - w) / 2, y: btnTextY, size: 14, font: bold, color: primary });
-    btnTextY -= 18;
+    const qas = (assetData.questionsAnswered || []).slice(0, 3);
+    const startY = H - M - 80;
+    const qaH    = Math.min(110, (startY - M - 60) / Math.max(qas.length, 1));
+
+    qas.forEach((qa, i) => {
+      const qy = startY - i * qaH;
+      const letter = (qa.icon_letter || "Q").toUpperCase().substring(0,2);
+      iconCircle(pg, M + 18, qy - 6, 16, letter, light, blue);
+      pg.drawCircle({ x: M+18, y: qy-6, size: 16, borderColor: chipBg, borderWidth: 1 });
+      const qLines = wrapText(`"${qa.question}"`, bold, 10, W - M * 2 - 48).slice(0, 2);
+      let ty = qy;
+      for (const l of qLines) { pg.drawText(l, { x: M+44, y: ty, size: 10, font: bold, color: bodyTxt }); ty -= 13; }
+      for (const l of wrapText(qa.answer || "", font, 9, W - M * 2 - 48).slice(0, 3)) {
+        pg.drawText(l, { x: M+44, y: ty, size: 9, font, color: gray }); ty -= 12;
+      }
+      if (i < qas.length - 1)
+        pg.drawLine({ start: {x: M, y: qy - qaH + 10}, end: {x: W-M, y: qy - qaH + 10}, thickness: 0.5, color: chipBg });
+    });
+
+    // Bottom line box
+    if (assetData.bottomLine) {
+      const blH = 42;
+      r(pg, M, M + 4, W - M * 2, blH, navy);
+      pg.drawText("Bottom line", { x: M+12, y: M + blH - 10, size: 9, font: bold, color: orange });
+      for (const l of wrapText(assetData.bottomLine, font, 9, W - M * 2 - 24).slice(0, 2)) {
+        pg.drawText(l, { x: M+12, y: M + blH - 24, size: 9, font, color: rgb(0.88,0.88,0.88) });
+      }
+    }
+    pageNum(pg, 4);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SLIDE 5 — WHY SCALER IS THE RIGHT FIT
+  // ══════════════════════════════════════════════════════════════════════════
+  {
+    const pg = pdfDoc.addPage([W, H]);
+    r(pg, 0, 0, W, H, white);
+    slideHeader(pg, "04", "Why Scaler is the Right Fit for You", "Designed for engineers. Built for outcomes.");
+
+    const features = (assetData.whyScalerFeatures || []).slice(0, 6);
+    const cols = 2, rows = Math.ceil(features.length / cols);
+    const fW   = Math.floor((W - M * 2 - 16) / cols);
+    const fH   = 68;
+    const startY = H - M - 75;
+
+    features.forEach((feat, i) => {
+      const col = i % cols, row = Math.floor(i / cols);
+      const fx = M + col * (fW + 16);
+      const fy = startY - row * (fH + 8) - fH;
+      const letter = (feat.icon_letter || feat.title.charAt(0)).toUpperCase().substring(0,2);
+      iconCircle(pg, fx + 20, fy + fH - 20, 14, letter, light, blue);
+      pg.drawText(feat.title, { x: fx + 40, y: fy + fH - 16, size: 10, font: bold, color: bodyTxt });
+      let dy = fy + fH - 30;
+      for (const l of wrapText(feat.description || "", font, 8, fW - 44).slice(0, 2)) {
+        pg.drawText(l, { x: fx + 40, y: dy, size: 8, font, color: gray }); dy -= 11;
+      }
+    });
+
+    // Stats bar
+    const barH = 52;
+    r(pg, 0, 0, W, barH, navy);
+    const stats = [["1500+", "careers accelerated"], ["85%+", "of learners make a career shift"]];
+    stats.forEach(([val, lbl], i) => {
+      const sx = M + i * (W / 2);
+      pg.drawText(val, { x: sx, y: barH - 20, size: 18, font: bold, color: white });
+      pg.drawText(lbl, { x: sx, y: barH - 34, size: 8, font, color: rgb(0.7,0.7,0.7) });
+      if (i === 0) pg.drawLine({ start: {x: W/2, y: 8}, end: {x: W/2, y: barH - 6}, thickness: 0.5, color: rgb(0.3,0.4,0.5) });
+    });
+    pg.drawText("*Based on internal data", { x: W - M - font.widthOfTextAtSize("*Based on internal data", 7), y: 6, size: 7, font, color: rgb(0.5,0.5,0.5) });
+    pageNum(pg, 5);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SLIDE 6 — YOUR NEXT STEP
+  // ══════════════════════════════════════════════════════════════════════════
+  {
+    const pg = pdfDoc.addPage([W, H]);
+    r(pg, 0, 0, W, H, white);
+    slideHeader(pg, "05", "Your Next Step", "A small step today for a big leap tomorrow.");
+
+    const colW  = (W - M * 2 - 24) / 2;
+    const leftX = M, rightX = M + colW + 24;
+    const topY  = H - M - 82;
+
+    // Left: Assessment card
+    const cardH = 220;
+    r(pg, leftX, topY - cardH, colW, cardH, rgb(235/255, 244/255, 255/255));
+    // clipboard icon (rect + lines)
+    r(pg, leftX + 14, topY - 30, 28, 22, blue);
+    page?.drawText; // no-op placeholder
+    for (let li = 0; li < 3; li++) {
+      pg.drawLine({ start: {x: leftX+19, y: topY - 36 - li*5}, end: {x: leftX+36, y: topY - 36 - li*5}, thickness: 1, color: white });
+    }
+    pg.drawText(assetData.nextStepTitle || "Take the Assessment", { x: leftX + 50, y: topY - 22, size: 12, font: bold, color: navy });
+    let ay = topY - 38;
+    for (const l of wrapText(assetData.nextStepBody || "", font, 9, colW - 16).slice(0, 3)) {
+      pg.drawText(l, { x: leftX + 12, y: ay, size: 9, font, color: gray }); ay -= 13;
+    }
+    // feature pills row
+    ay -= 12;
+    const fpills = ["Personalized feedback", "Right batch recommendation", "Clarity on your readiness"];
+    let fpillX = leftX + 12;
+    for (const fp of fpills) {
+      const fw = font.widthOfTextAtSize(fp, 7) + 10;
+      if (fpillX + fw > leftX + colW - 8) { fpillX = leftX + 12; ay -= 20; }
+      r(pg, fpillX, ay, fw, 16, chipBg);
+      pg.drawText(fp, { x: fpillX + 5, y: ay + 4, size: 7, font, color: chipTx });
+      fpillX += fw + 6;
+    }
+
+    // Right: Why take it checklist
+    pg.drawText("Why take it?", { x: rightX, y: topY, size: 12, font: bold, color: bodyTxt });
+    let cy = topY - 22;
+    for (const item of (assetData.whyTakeIt || []).slice(0, 4)) {
+      circ(pg, rightX + 8, cy + 4, 7, rgb(0.9, 0.97, 0.92));
+      pg.drawText("v", { x: rightX + 5, y: cy + 1, size: 7, font: bold, color: green });
+      for (const l of wrapText(item, font, 9, colW - 30).slice(0, 1)) {
+        pg.drawText(l, { x: rightX + 22, y: cy, size: 9, font, color: bodyTxt });
+      }
+      cy -= 22;
+    }
+
+    // Footer bar
+    const footH = 46;
+    r(pg, 0, 0, W, footH, navy);
+    pg.drawText("We're excited to be part of your journey.", { x: M, y: footH - 18, size: 10, font: bold, color: white });
+    pg.drawText("Let's build the future, together.", { x: M, y: footH - 32, size: 9, font, color: rgb(0.75,0.75,0.75) });
+    pg.drawText("SCALER", { x: W - M - bold.widthOfTextAtSize("SCALER", 14), y: footH - 22, size: 14, font: bold, color: white });
+    r(pg, W - M - bold.widthOfTextAtSize("SCALER", 14) - 14, footH - 22, 10, 13, orange);
+    pageNum(pg, 6);
   }
 
   return await pdfDoc.save();
 }
+
+
+
 
 function drawSection() {
   // legacy shim — no longer used by renderPdf but kept for safety
