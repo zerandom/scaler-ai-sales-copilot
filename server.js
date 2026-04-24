@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,6 +11,11 @@ import { benchmarkPersonas, detectPersonaStrategy } from "./lib/personas.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const supabase = createClient(
+  process.env.SUPABASE_URL || "",
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+);
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
@@ -113,9 +119,15 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
     });
 
     const assetId = crypto.randomUUID();
+    
+    // Supabase Integration: Save lead and upload PDF
+    const lead = await saveLeadToSupabase(leadProfile);
+    const pdfUrl = await uploadPdfToSupabase(assetId, generated.pdfBytes);
+
     generatedAssets.set(assetId, {
       id: assetId,
       createdAt: new Date().toISOString(),
+      leadId: lead.id,
       leadProfile,
       bdaWhatsapp,
       leadWhatsapp,
@@ -123,6 +135,7 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
       strategy,
       insights,
       evidence,
+      pdfUrl,
       ...generated,
     });
 
@@ -135,7 +148,7 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
       transcriptionMeta,
       coverMessage: generated.coverMessage,
       pdfPreviewHtml: generated.previewHtml,
-      pdfUrl: `/assets/${assetId}.pdf`,
+      pdfUrl,
       approvalRequired: true,
     });
   } catch (error) {
@@ -167,13 +180,21 @@ app.post("/api/approve-send", async (req, res) => {
     }
 
     const body = editedMessage || asset.coverMessage;
-    const mediaUrl = buildAssetUrl(`/assets/${assetId}.pdf`);
+    const mediaUrl = asset.pdfUrl; // Use the Supabase URL
     const sendResult = await sendWhatsappMessage({
       to: asset.leadWhatsapp,
       body,
       mediaUrl,
       requiresMedia: true,
       audience: "lead",
+    });
+
+    // Supabase Integration: Log generation and status
+    await logGenerationToSupabase({
+      leadId: asset.leadId,
+      pdfUrl: asset.pdfUrl,
+      whatsappStatus: sendResult.status,
+      whatsappSid: sendResult.sid || null,
     });
 
     asset.approval = {
@@ -187,27 +208,11 @@ app.post("/api/approve-send", async (req, res) => {
       status: "sent",
       sendResult,
       assetId,
-      pdfUrl: `/assets/${assetId}.pdf`,
+      pdfUrl: asset.pdfUrl,
     });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Failed to approve and send asset." });
   }
-});
-
-app.get("/assets/:assetId.pdf", async (req, res) => {
-  const assetId = req.params.assetId;
-  const asset = generatedAssets.get(assetId);
-
-  if (!asset) {
-    return res.status(404).send("PDF not found");
-  }
-
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader(
-    "Content-Disposition",
-    `inline; filename="${asset.leadProfile.name.replace(/\s+/g, "-").toLowerCase()}-scaler-brief.pdf"`
-  );
-  return res.send(Buffer.from(asset.pdfBytes));
 });
 
 if (isMainModule) {
@@ -1272,6 +1277,57 @@ function escapeHtml(value = "") {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+async function saveLeadToSupabase(leadProfile) {
+  const { data, error } = await supabase
+    .from("leads")
+    .upsert(
+      {
+        name: leadProfile.name,
+        phone: leadProfile.phone || null,
+        role: leadProfile.role || null,
+        experience: leadProfile.experience || null,
+        company: leadProfile.company || null,
+      },
+      { onConflict: "name" }
+    )
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function uploadPdfToSupabase(assetId, pdfBytes) {
+  const fileName = `${assetId}.pdf`;
+  const { error } = await supabase.storage
+    .from("pdfs")
+    .upload(fileName, pdfBytes, {
+      contentType: "application/pdf",
+      upsert: true,
+    });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage.from("pdfs").getPublicUrl(fileName);
+  return data.publicUrl;
+}
+
+async function logGenerationToSupabase({ leadId, pdfUrl, whatsappStatus, whatsappSid }) {
+  const { data, error } = await supabase
+    .from("generation_logs")
+    .insert({
+      lead_id: leadId,
+      pdf_url: pdfUrl,
+      whatsapp_status: whatsappStatus,
+      whatsapp_sid: whatsappSid,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
 }
 
 export {
