@@ -1330,6 +1330,8 @@ async function logGenerationToSupabase({ leadId, pdfUrl, whatsappStatus, whatsap
   return data;
 }
 
+export default app;
+
 export {
   app,
   benchmarkPersonas,
