@@ -119,15 +119,23 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
     });
 
     const assetId = crypto.randomUUID();
-    
-    // Supabase Integration: Save lead and upload PDF
-    const lead = await saveLeadToSupabase(leadProfile);
-    const pdfUrl = await uploadPdfToSupabase(assetId, generated.pdfBytes);
+
+    // Supabase Integration: Save lead and upload PDF (non-fatal — falls back gracefully)
+    let leadId = null;
+    let pdfUrl = `/assets/${assetId}.pdf`; // fallback to local route
+    try {
+      const lead = await saveLeadToSupabase(leadProfile);
+      leadId = lead.id;
+      const uploadedUrl = await uploadPdfToSupabase(assetId, generated.pdfBytes);
+      pdfUrl = uploadedUrl;
+    } catch (supabaseErr) {
+      console.warn("Supabase save failed (non-fatal):", supabaseErr.message);
+    }
 
     generatedAssets.set(assetId, {
       id: assetId,
       createdAt: new Date().toISOString(),
-      leadId: lead.id,
+      leadId,
       leadProfile,
       bdaWhatsapp,
       leadWhatsapp,
@@ -220,6 +228,24 @@ if (isMainModule) {
     console.log(`Scaler AI Sales Copilot running on http://localhost:${port}`);
   });
 }
+
+// Fallback local PDF route (used when Supabase upload fails)
+app.get("/assets/:assetId.pdf", async (req, res) => {
+  const assetId = req.params.assetId;
+  const asset = generatedAssets.get(assetId);
+
+  if (!asset) {
+    return res.status(404).send("PDF not found");
+  }
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename="${asset.leadProfile.name.replace(/\s+/g, "-").toLowerCase()}-scaler-brief.pdf"`
+  );
+  return res.send(Buffer.from(asset.pdfBytes));
+});
+
 
 function parseJsonMaybe(value) {
   if (!value) return {};
