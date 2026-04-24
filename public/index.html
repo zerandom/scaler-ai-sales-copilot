@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scaler AI Sales Copilot</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero-card">
+        <div class="hero-copy">
+          <p class="eyebrow">Scaler AI Sales Copilot</p>
+          <h1>Warm the BDA up first. Build trust with the lead after the call.</h1>
+          <p class="hero-text">
+            Enter the BDA number once, send the pre-call nudge from a clean lead profile, then move
+            into a separate post-call workflow to generate, preview, and approve the lead-facing PDF.
+          </p>
+        </div>
+        <aside class="hero-panel">
+          <label class="field">
+            <span>BDA / evaluator WhatsApp number</span>
+            <input id="bdaWhatsapp" type="text" placeholder="+91XXXXXXXXXX" />
+          </label>
+          <div class="status-grid" id="healthPanel"></div>
+        </aside>
+      </header>
+
+      <nav class="stage-nav" aria-label="Workflow stages">
+        <button id="stagePrecall" class="stage-pill is-active" data-stage="precall">
+          <span>1</span>
+          <strong>Pre-call nudge</strong>
+        </button>
+        <button id="stagePostcall" class="stage-pill" data-stage="postcall">
+          <span>2</span>
+          <strong>Post-call follow-up</strong>
+        </button>
+      </nav>
+
+      <div id="alerts"></div>
+
+      <section id="precallStage" class="stage-panel">
+        <main class="layout-grid">
+          <section class="panel">
+            <div class="panel-top">
+              <div>
+                <p class="eyebrow">Step 1</p>
+                <h2>Lead profile for the pre-call nudge</h2>
+              </div>
+            </div>
+
+            <div class="shortcut-bar" id="benchmarkButtons"></div>
+
+            <div class="form-grid">
+              <label class="field">
+                <span>Lead name</span>
+                <input id="leadName" type="text" />
+              </label>
+              <label class="field">
+                <span>Current role / background</span>
+                <input id="leadRole" type="text" />
+              </label>
+              <label class="field">
+                <span>Experience</span>
+                <input id="leadExperience" type="text" />
+              </label>
+              <label class="field">
+                <span>Lead WhatsApp number</span>
+                <input id="leadWhatsapp" type="text" placeholder="+91XXXXXXXXXX" />
+              </label>
+              <label class="field full-span">
+                <span>Intent</span>
+                <textarea id="leadIntent" rows="2"></textarea>
+              </label>
+              <label class="field full-span">
+                <span>Links / resume context</span>
+                <textarea id="leadLinks" rows="2"></textarea>
+              </label>
+              <label class="field full-span">
+                <span>Notes</span>
+                <textarea id="leadNotes" rows="3"></textarea>
+              </label>
+            </div>
+
+            <div class="action-row">
+              <button id="generatePrecall" class="primary-btn">Send pre-call nudge</button>
+            </div>
+            <p class="microcopy">
+              This stage is strictly pre-call. No transcript or audio is used here.
+            </p>
+          </section>
+
+          <section class="panel output-panel">
+            <div class="panel-top">
+              <div>
+                <p class="eyebrow">Pre-call output</p>
+                <h2>BDA WhatsApp brief</h2>
+              </div>
+            </div>
+
+            <section class="result-block">
+              <div class="result-head">
+                <h3>WhatsApp nudge</h3>
+                <span id="precallStatus" class="badge">Waiting</span>
+              </div>
+              <pre id="precallOutput" class="message-card">No pre-call brief generated yet.</pre>
+            </section>
+
+            <section class="result-block">
+              <div class="result-head">
+                <h3>Candidate handoff</h3>
+              </div>
+              <p class="microcopy no-top">
+                Once the nudge is sent, this candidate is added to the post-call queue for transcript
+                or audio follow-up.
+              </p>
+              <div id="candidateQueue" class="queue-list">
+                <p class="empty-state">No candidates ready for post-call follow-up yet.</p>
+              </div>
+              <div class="action-row">
+                <button id="continueToPostcall" class="secondary-btn" disabled>
+                  Continue to post-call
+                </button>
+              </div>
+            </section>
+          </section>
+        </main>
+      </section>
+
+      <section id="postcallStage" class="stage-panel is-hidden">
+        <main class="layout-grid">
+          <section class="panel">
+            <div class="panel-top">
+              <div>
+                <p class="eyebrow">Step 2</p>
+                <h2>Post-call transcript or audio</h2>
+              </div>
+              <div class="mode-switch">
+                <button class="mode-btn is-active" data-mode="structured">Transcript</button>
+                <button class="mode-btn" data-mode="audio">Audio</button>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <label class="field full-span">
+                <span>Select candidate</span>
+                <select id="candidateSelect"></select>
+              </label>
+              <div id="candidateSummary" class="candidate-summary full-span">
+                <p class="empty-state">Select a candidate to continue.</p>
+              </div>
+              <label class="field">
+                <span>Lead WhatsApp number</span>
+                <input id="postcallLeadWhatsapp" type="text" placeholder="+91XXXXXXXXXX" />
+              </label>
+              <label class="field">
+                <span>BDA WhatsApp number</span>
+                <input id="postcallBdaWhatsapp" type="text" placeholder="+91XXXXXXXXXX" />
+              </label>
+              <label class="field full-span structured-only">
+                <span>Call transcript</span>
+                <textarea id="transcript" rows="10"></textarea>
+              </label>
+              <label class="field full-span audio-only is-hidden">
+                <span>Call recording</span>
+                <input id="audioFile" type="file" accept="audio/*" />
+              </label>
+            </div>
+
+            <div class="action-row">
+              <button id="backToPrecall" class="ghost-btn">Back to pre-call</button>
+              <button id="generatePostcall" class="primary-btn">Generate post-call PDF</button>
+            </div>
+            <p class="microcopy">
+              Lead-facing messages never send automatically. Every outbound PDF goes through preview +
+              Approve / Edit / Skip.
+            </p>
+          </section>
+
+          <section class="panel output-panel">
+            <div class="panel-top">
+              <div>
+                <p class="eyebrow">Post-call output</p>
+                <h2>Insights and approval</h2>
+              </div>
+            </div>
+
+            <section class="result-block">
+              <div class="result-head">
+                <h3>Extracted insights</h3>
+                <span id="insightsStatus" class="badge">Waiting</span>
+              </div>
+              <div id="insightsOutput" class="insights-grid"></div>
+            </section>
+
+            <section class="result-block">
+              <div class="result-head">
+                <h3>Approval gate</h3>
+                <span id="approvalStatus" class="badge">Locked</span>
+              </div>
+              <label class="field">
+                <span>Cover message to the lead</span>
+                <textarea id="approvalMessage" rows="5"></textarea>
+              </label>
+              <div class="action-row">
+                <button id="approveSend" class="primary-btn" disabled>Approve & send to lead</button>
+                <button id="skipSend" class="ghost-btn" disabled>Skip</button>
+                <a id="pdfLink" class="secondary-link" target="_blank" rel="noreferrer" style="display: none">Open PDF</a>
+              </div>
+            </section>
+          </section>
+        </main>
+
+        <section class="panel preview-panel">
+          <div class="panel-top">
+            <div>
+              <p class="eyebrow">Preview</p>
+              <h2>Lead-facing PDF preview</h2>
+            </div>
+          </div>
+          <div id="pdfPreview" class="preview-frame">
+            <p class="empty-state">Generate a post-call asset to preview the PDF here.</p>
+          </div>
+        </section>
+      </section>
+    </div>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

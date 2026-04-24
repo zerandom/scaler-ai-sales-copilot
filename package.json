@@ -1,0 +1,17 @@
+{
+  "name": "scaler-ai-sales-copilot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js",
+    "test:smoke": "node scripts/smoke-test.mjs",
+    "test:live": "node scripts/live-smoke.mjs"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "multer": "^2.1.1",
+    "pdf-lib": "^1.17.1"
+  }
+}
