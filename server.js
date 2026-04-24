@@ -12,8 +12,9 @@ import { benchmarkPersonas, detectPersonaStrategy } from "./lib/personas.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const supabaseUrl = (process.env.SUPABASE_URL || "").replace(/\/rest\/v1\/?$/, "");
 const supabase = createClient(
-  process.env.SUPABASE_URL || "",
+  supabaseUrl,
   process.env.SUPABASE_SERVICE_ROLE_KEY || ""
 );
 
@@ -232,18 +233,33 @@ if (isMainModule) {
 // Fallback local PDF route (used when Supabase upload fails)
 app.get("/assets/:assetId.pdf", async (req, res) => {
   const assetId = req.params.assetId;
-  const asset = generatedAssets.get(assetId);
+  let asset = generatedAssets.get(assetId);
 
-  if (!asset) {
-    return res.status(404).send("PDF not found");
+  try {
+    let pdfBuffer;
+    let fileName = `${assetId}.pdf`;
+
+    if (asset && asset.pdfBytes) {
+      pdfBuffer = Buffer.from(asset.pdfBytes);
+    } else {
+      // Fallback: Try to fetch from Supabase storage if not in memory
+      const { data, error } = await supabase.storage.from("pdfs").download(fileName);
+      if (error || !data) {
+        return res.status(404).send("PDF not found in memory or storage.");
+      }
+      pdfBuffer = Buffer.from(await data.arrayBuffer());
+    }
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${(asset?.leadProfile?.name || "scaler-brief").replace(/\s+/g, "-").toLowerCase()}.pdf"`
+    );
+    return res.send(pdfBuffer);
+  } catch (err) {
+    console.error("Asset retrieval error:", err);
+    return res.status(404).send("PDF not found.");
   }
-
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader(
-    "Content-Disposition",
-    `inline; filename="${asset.leadProfile.name.replace(/\s+/g, "-").toLowerCase()}-scaler-brief.pdf"`
-  );
-  return res.send(Buffer.from(asset.pdfBytes));
 });
 
 
