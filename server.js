@@ -139,22 +139,8 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
       console.warn("Supabase storage sync failed:", supabaseErr.message);
     }
 
-    generatedAssets.set(assetId, {
-      id: assetId,
-      createdAt: new Date().toISOString(),
-      leadId,
-      leadProfile,
-      bdaWhatsapp,
-      leadWhatsapp,
-      transcript: transcriptText,
-      strategy,
-      insights,
-      evidence,
-      pdfUrl,
-      coverMessage: generated.coverMessage,
-    });
 
-    // Persist asset metadata for stateless approval
+    // Persist asset metadata for stateless approval and re-rendering
     const metadata = {
       id: assetId,
       createdAt: new Date().toISOString(),
@@ -167,7 +153,7 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
       insights,
       evidence,
       pdfUrl,
-      coverMessage: generated.coverMessage,
+      ...generated, // Includes coverMessage, situationItems, goals, etc.
     };
 
     try {
@@ -916,7 +902,7 @@ async function materializeLeadAsset(assetData, strategy, leadProfile, evidence) 
   const pdfBytes = await renderPdf(assetData, strategy, leadProfile, evidence);
 
   return {
-    coverMessage: assetData.coverMessage,
+    ...assetData,
     previewHtml,
     pdfBytes,
   };
