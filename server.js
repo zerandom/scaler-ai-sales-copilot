@@ -523,22 +523,36 @@ function buildFallbackInsights(leadProfile, transcript, strategy = detectPersona
     emotionalSignals.push("career timing anxiety");
   }
 
-  if (!goals.length && strategy.key === "senior-operator") {
-    goals.push("Validate whether a structured applied AI program adds value beyond self-study.");
-  }
-  if (!goals.length && strategy.key === "career-risk") {
-    goals.push("Choose a credible path into a product-company career without reckless risk.");
-  }
-  if (!goals.length) {
-    goals.push("Move into stronger software or AI-oriented roles with better alignment and upside.");
+  // Always populate implicit questions based on strategy
+  if (!implicitQuestions.length) {
+    if (strategy.key === "senior-operator") {
+      implicitQuestions.push(
+        "Is this cohort genuinely selective enough for my level?",
+        "Will the applied projects be meaningfully different from what I can self-study?",
+        "Are the instructors practitioners or academics?"
+      );
+    } else if (strategy.key === "career-risk") {
+      implicitQuestions.push(
+        "Can I trust Scaler's placement numbers — are they real?",
+        "What happens if I don't crack the entrance test?",
+        "Is this decision going to be hard to justify to my family?"
+      );
+    } else {
+      implicitQuestions.push(
+        "Is Scaler actually worth 3.5L compared to free alternatives?",
+        "Will I get a job after completing this, or is it just a certificate?",
+        "Will the peer group be driven engineers or just beginners?"
+      );
+    }
   }
 
-  if (!emotionalSignals.length) {
-    emotionalSignals.push("needs clearer confidence before taking the next step");
-  }
-
-  if (!recommendedProof.length) {
-    recommendedProof.push("projects", "mentorship", "career-support");
+  // Always populate evidence gaps with useful coaching notes
+  if (!evidenceGaps.length) {
+    evidenceGaps.push(
+      "No specific salary benchmark was confirmed — follow up with current CTC and target CTC.",
+      "Placement outcome data was referenced but not directly shown — share the alumni outcomes deck.",
+      "Financing terms were not discussed in detail — BDA should confirm EMI and ISA options."
+    );
   }
 
   return {
