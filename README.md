@@ -9,6 +9,6 @@ I built an internal sales copilot that turns raw discovery calls into highly per
 **Why**: The extraction prompt was too rigid. It looked for literal question marks rather than translating emotional objections into structured concerns, resulting in blank PDF cards.
 
 ### Scale plan
-If this scales to 100,000 leads a month, our Vercel serverless setup breaks first. Currently, waiting for the LLM to generate JSON and synchronously drawing coordinate-based PDFs via `pdf-lib` takes 5-8 seconds. At volume, we'll hit Vercel timeouts constantly. 
+If we scale to 100,000 leads a month, the synchronous approval gate breaks first. Right now, a BDA has to sit and wait 8 seconds staring at a loader while the AI thinks and the PDF generates before they can move to the next lead. At scale, this idle time costs thousands of sales hours. 
 
-To fix this, I have to decouple the pipeline. I'd move the LLM generation to an async background worker (like Inngest) and replace the manual `pdf-lib` coordinate math with a dedicated HTML-to-PDF microservice using Headless Chromium. The frontend would just poll for completion.
+To fix this, we must shift to an asynchronous queue. The BDA drops the transcript, moves to their next call, and the finalized PDF simply arrives in a "Ready for Review" inbox later. We remove the BDA as the bottleneck.
