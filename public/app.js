@@ -321,16 +321,24 @@ async function handleApproval(action) {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || "Approval flow failed.");
 
+    const resultStatus = payload.sendResult?.status || payload.status;
     elements.approvalStatus.textContent =
-      action === "skip" ? "Skipped" : humanizeSendStatus(payload.sendResult?.status || payload.status);
+      action === "skip" ? "Skipped" : humanizeSendStatus(resultStatus);
+    
+    if (resultStatus === "error") {
+      elements.approvalStatus.textContent += `: ${payload.sendResult?.error || "Unknown error"}`;
+      elements.approvalStatus.style.color = "var(--danger)";
+    }
     pushAlert(
       action === "skip"
         ? "Lead-facing send skipped."
         : `Lead-facing send processed: ${payload.sendResult?.status || payload.status}`,
       "info"
     );
-  } catch (error) {
-    pushAlert(error.message, "error");
+  } catch (err) {
+    elements.approvalStatus.textContent = `Error: ${err.message}`;
+    elements.approvalStatus.style.color = "var(--danger)";
+    pushAlert(err.message, "danger");
   } finally {
     setLoading(elements.approveSend, false, "Approve & send to lead");
     setLoading(elements.skipSend, false, "Skip");

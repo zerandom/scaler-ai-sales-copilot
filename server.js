@@ -150,9 +150,32 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
       strategy,
       insights,
       evidence,
+    // Persist asset metadata for stateless approval
+    const metadata = {
+      id: assetId,
+      createdAt: new Date().toISOString(),
+      leadId,
+      leadProfile,
+      bdaWhatsapp,
+      leadWhatsapp,
+      transcript: transcriptText,
+      strategy,
+      insights,
+      evidence,
       pdfUrl,
-      ...generated,
-    });
+      coverMessage: generated.coverMessage,
+    };
+
+    try {
+      await supabase.storage.from("pdfs").upload(`${assetId}.json`, JSON.stringify(metadata), {
+        contentType: "application/json",
+        upsert: true,
+      });
+    } catch (metaErr) {
+      console.warn("Metadata persistence failed:", metaErr.message);
+    }
+
+    generatedAssets.set(assetId, metadata);
 
     return res.json({
       assetId,
@@ -178,9 +201,25 @@ app.post("/api/approve-send", async (req, res) => {
     const action = req.body.action || "approve";
     const editedMessage = (req.body.editedMessage || "").trim();
 
-    const asset = generatedAssets.get(assetId);
+    let asset = generatedAssets.get(assetId);
+    
+    // Fallback: Fetch from Supabase if stateless instance restarted
     if (!asset) {
-      return res.status(404).json({ error: "Generated asset not found." });
+      console.log(`Asset ${assetId} not in memory, fetching from Supabase...`);
+      try {
+        const { data, error } = await supabase.storage.from("pdfs").download(`${assetId}.json`);
+        if (!error && data) {
+          const text = await data.text();
+          asset = JSON.parse(text);
+          console.log("Asset metadata restored from storage.");
+        }
+      } catch (err) {
+        console.error("Failed to restore asset metadata:", err.message);
+      }
+    }
+
+    if (!asset) {
+      return res.status(404).json({ error: "Generated asset not found or session expired." });
     }
 
     if (action === "skip") {
@@ -1242,6 +1281,9 @@ async function sendWhatsappMessage({ to, body, mediaUrl, requiresMedia = false, 
       reason: "PUBLIC_BASE_URL is required for WhatsApp media delivery.",
     };
   }
+
+  console.log(`Sending WhatsApp (${audience}) to: ${to}`);
+  if (mediaUrl) console.log(`With Media URL: ${mediaUrl}`);
 
   const params = new URLSearchParams();
   params.set("To", `whatsapp:${to}`);
