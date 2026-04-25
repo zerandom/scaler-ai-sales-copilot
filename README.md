@@ -8,7 +8,7 @@ I built an internal sales copilot that turns raw discovery calls into highly per
 **Output**: The LLM returned empty arrays for `implicit_questions` and `evidence_gaps`.
 **Why**: The extraction prompt was too rigid. It looked for literal question marks rather than translating emotional objections into structured concerns, resulting in blank PDF cards.
 
-### Failure/Biggest Roadblock
+### Challenge
 The biggest challenge and probably the most crucial piece of this work has been to get the AI to stick to creating different but Scaler worthy intricate PDFs; Rate Limits were challenging while solving for this
 
 ### Scale plan
