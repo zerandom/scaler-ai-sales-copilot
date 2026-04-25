@@ -134,7 +134,7 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
       if (leadData) leadId = leadData.id;
       
       const pdfBuffer = Buffer.from(generated.pdfBytes);
-      const friendlyName = `${(leadProfile.name || "Lead").replace(/\s+/g, "-")}-Scaler-Brief.pdf`;
+      const friendlyName = `${(leadProfile.name || "Lead").replace(/\s+/g, "-")}-${Date.now()}-Scaler-Brief.pdf`;
       const uploadedUrl = await uploadPdfToSupabase(assetId, pdfBuffer, friendlyName);
       if (uploadedUrl) pdfUrl = uploadedUrl;
     } catch (supabaseErr) {
