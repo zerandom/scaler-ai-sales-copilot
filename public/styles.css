@@ -522,64 +522,89 @@ body {
   border-color: rgba(154, 61, 47, 0.12);
 }
 
-.pdf-preview-shell {
+.pdf-preview-shell-v2 {
   background: white;
-  color: #222;
-  border-radius: 22px;
+  color: #333;
+  border-radius: 20px;
   overflow: hidden;
+  font-size: 14px;
 }
 
-.pdf-preview-hero {
-  padding: 28px;
-  background: linear-gradient(160deg, var(--primary), var(--secondary));
+.pdf-preview-header-v2 {
+  padding: 30px;
+  background: var(--primary);
   color: white;
 }
 
-.pdf-preview-hero h1 {
-  margin: 0;
+.pdf-preview-header-v2 h1 {
+  margin: 10px 0 5px;
   font-family: "Instrument Serif", serif;
-  font-size: clamp(2rem, 4vw, 3.1rem);
-  font-weight: 400;
-  line-height: 0.94;
+  font-size: 2.5rem;
+  line-height: 1;
 }
 
-.pdf-preview-hero .subtitle {
-  max-width: 56ch;
-  opacity: 0.9;
+.pdf-preview-header-v2 .badge {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: 0;
+  font-size: 10px;
+  letter-spacing: 0.1em;
 }
 
-.identity {
+.preview-main-v2 {
+  padding: 20px;
+  display: grid;
+  gap: 15px;
+}
+
+.preview-section-v2 {
+  background: #f8f9fc;
+  border: 1px solid #eef0f7;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.sec-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 8px;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+}
+
+.sec-content {
+  line-height: 1.6;
+}
+
+.sec-content hr {
+  border: 0;
+  border-top: 1px solid #eef0f7;
+  margin: 10px 0;
+}
+
+.pills {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 18px;
+  gap: 6px;
 }
 
-.identity span {
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-  font-size: 12px;
+.pills span {
+  background: #eef0f7;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 11px;
   font-weight: 700;
 }
 
-.preview-section {
-  margin: 18px;
-  padding: 20px;
-  border-radius: 20px;
-  background: var(--surface);
+.preview-pull-quote {
+  padding: 20px 30px 30px;
+  font-style: italic;
+  color: #666;
+  text-align: center;
+  font-size: 1.1rem;
 }
 
-.preview-section h3 {
-  margin: 0 0 12px;
-  color: var(--primary);
-}
-
-.preview-section p,
-.preview-section li {
-  color: rgba(0, 0, 0, 0.7);
-  line-height: 1.7;
-}
 
 @media (max-width: 1080px) {
   .hero-card,

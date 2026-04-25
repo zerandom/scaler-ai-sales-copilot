@@ -121,16 +121,18 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
 
     const assetId = crypto.randomUUID();
 
-    // Supabase Integration: Save lead and upload PDF (non-fatal — falls back gracefully)
     let leadId = null;
-    let pdfUrl = `/assets/${assetId}.pdf`; // fallback to local route
+    let baseUrl = process.env.PUBLIC_BASE_URL || "";
+    if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
+    let pdfUrl = `${baseUrl}/assets/${assetId}.pdf`; 
+
     try {
       const lead = await saveLeadToSupabase(leadProfile);
       leadId = lead.id;
       const uploadedUrl = await uploadPdfToSupabase(assetId, generated.pdfBytes);
-      pdfUrl = uploadedUrl;
+      if (uploadedUrl) pdfUrl = uploadedUrl;
     } catch (supabaseErr) {
-      console.warn("Supabase save failed (non-fatal):", supabaseErr.message);
+      console.warn("Supabase integration failed (non-fatal):", supabaseErr.message);
     }
 
     generatedAssets.set(assetId, {
@@ -842,29 +844,53 @@ async function materializeLeadAsset(assetData, strategy, leadProfile, evidence) 
 }
 
 function renderPreviewHtml(assetData, strategy, leadProfile) {
-  const [primary] = strategy.palette;
-  const items = [
-    ...(assetData.situationItems || []).map(it => `<li><strong>${escapeHtml(it.title)}</strong>: ${escapeHtml(it.description)}</li>`),
-    ...(assetData.goals || []).map(g => `<li><strong>${escapeHtml(g.title)}</strong>: ${escapeHtml(g.description)}</li>`),
-    ...(assetData.questionsAnswered || []).map(q => `<li><strong>${escapeHtml(q.question)}</strong> — ${escapeHtml(q.answer)}</li>`),
-    ...(assetData.whyScalerFeatures || []).map(f => `<li><strong>${escapeHtml(f.title)}</strong>: ${escapeHtml(f.description)}</li>`),
+  const primary = strategy.palette?.[0] || "#0e2238";
+  
+  const sections = [
+    { 
+      title: "WHERE YOU STAND", 
+      content: (assetData.situationItems || []).map(it => `<div><strong>${escapeHtml(it.title)}</strong>: ${escapeHtml(it.description)}</div>`).join("") 
+    },
+    { 
+      title: "YOUR GOALS", 
+      content: (assetData.goals || []).map(g => `<div><strong>${escapeHtml(g.title)}</strong>: ${escapeHtml(g.description)}</div>`).join("") 
+    },
+    { 
+      title: "TARGET ROLES", 
+      content: `<div class="pills">${(assetData.targetRoles || []).map(r => `<span>${escapeHtml(r)}</span>`).join(" ")}</div>` 
+    },
+    { 
+      title: "KEY QUESTIONS", 
+      content: (assetData.questionsAnswered || []).map(q => `<div><strong>Q: ${escapeHtml(q.question)}</strong><br>A: ${escapeHtml(q.answer)}</div>`).join("<hr>") 
+    },
+    { 
+      title: "WHY SCALER", 
+      content: (assetData.whyScalerFeatures || []).map(f => `<div><strong>${escapeHtml(f.title)}</strong>: ${escapeHtml(f.description)}</div>`).join("") 
+    },
+    { 
+      title: "NEXT STEP", 
+      content: `<div><strong>${escapeHtml(assetData.nextStepTitle)}</strong></div><p>${escapeHtml(assetData.nextStepBody)}</p>` 
+    }
   ];
+
+  const htmlContent = sections.map(sec => `
+    <div class="preview-section-v2">
+      <div class="sec-label">${sec.title}</div>
+      <div class="sec-content">${sec.content}</div>
+    </div>
+  `).join("");
+
   return `
-    <div class="pdf-preview-shell" style="--primary:${primary}">
-      <header class="pdf-preview-hero">
-        <p class="eyebrow">${escapeHtml(strategy.heroLabel || "Your Career Plan")}</p>
+    <div class="pdf-preview-shell-v2" style="--primary:${primary}">
+      <header class="pdf-preview-header-v2">
+        <div class="badge">A4 LANDSCAPE DECK • 6 SLIDES</div>
         <h1>${escapeHtml(leadProfile.name)}</h1>
-        <p class="subtitle">${escapeHtml(assetData.subtitle || "")}</p>
-        <div class="identity">
-          <span>${escapeHtml(leadProfile.role || "Lead profile")}</span>
-          <span>${escapeHtml(leadProfile.experience || "")}</span>
-        </div>
+        <p>${escapeHtml(assetData.subtitle || "Your Personalized Career Plan")}</p>
       </header>
-      <main><ul>${items.join("")}</ul></main>
-      <section class="preview-section">
-        <h3>${escapeHtml(assetData.nextStepTitle || "Next Step")}</h3>
-        <p>${escapeHtml(assetData.nextStepBody || "")}</p>
-      </section>
+      <main class="preview-main-v2">
+        ${htmlContent}
+      </main>
+      <div class="preview-pull-quote">"${escapeHtml(assetData.pullQuote || "")}"</div>
     </div>
   `;
 }
