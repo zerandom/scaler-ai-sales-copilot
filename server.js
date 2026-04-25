@@ -1308,13 +1308,24 @@ async function sendWhatsappMessage({ to, body, mediaUrl, requiresMedia = false, 
   }
 
   console.log(`Sending WhatsApp (${audience}) to: ${to}`);
-  if (mediaUrl) console.log(`With Media URL: ${mediaUrl}`);
+  
+  // Twilio requires a '+' for international numbers
+  const formattedTo = to.startsWith("+") ? to : `+${to}`;
 
   const params = new URLSearchParams();
-  params.set("To", `whatsapp:${to}`);
+  params.set("To", `whatsapp:${formattedTo}`);
   params.set("From", process.env.TWILIO_WHATSAPP_FROM);
-  params.set("Body", body);
-  if (mediaUrl) params.set("MediaUrl", mediaUrl);
+  
+  // If mediaUrl is not public (e.g. local /assets/ path), Twilio will fail.
+  // Fallback: append the URL to the text body instead of using MediaUrl.
+  const isPublicUrl = mediaUrl && (mediaUrl.startsWith("http://") || mediaUrl.startsWith("https://"));
+  
+  if (requiresMedia && mediaUrl && !isPublicUrl) {
+    params.set("Body", `${body}\n\nView your career plan here: ${mediaUrl}`);
+  } else {
+    params.set("Body", body);
+    if (mediaUrl && isPublicUrl) params.set("MediaUrl", mediaUrl);
+  }
 
   const auth = Buffer.from(
     `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
