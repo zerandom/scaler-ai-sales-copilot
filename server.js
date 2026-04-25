@@ -129,10 +129,16 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
     try {
       const lead = await saveLeadToSupabase(leadProfile);
       leadId = lead.id;
-      const uploadedUrl = await uploadPdfToSupabase(assetId, Buffer.from(generated.pdfBytes));
+      
+      const pdfBuffer = Buffer.from(generated.pdfBytes);
+      const uploadedUrl = await uploadPdfToSupabase(assetId, pdfBuffer);
       if (uploadedUrl) pdfUrl = uploadedUrl;
     } catch (supabaseErr) {
-      console.error("Supabase integration error:", supabaseErr);
+      console.error("Critical Supabase error:", supabaseErr);
+      return res.status(500).json({ 
+        error: "Failed to persist PDF to storage. Please check Supabase configuration.",
+        details: supabaseErr.message 
+      });
     }
 
     generatedAssets.set(assetId, {
@@ -160,7 +166,6 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
       coverMessage: generated.coverMessage,
       pdfPreviewHtml: generated.previewHtml,
       pdfUrl,
-      pdfBytesBase64: Buffer.from(generated.pdfBytes).toString("base64"),
       approvalRequired: true,
     });
   } catch (error) {
@@ -1351,18 +1356,24 @@ async function saveLeadToSupabase(leadProfile) {
   return data;
 }
 
-async function uploadPdfToSupabase(assetId, pdfBytes) {
+async function uploadPdfToSupabase(assetId, pdfBuffer) {
   const fileName = `${assetId}.pdf`;
+  console.log(`Uploading ${fileName} to Supabase...`);
+  
   const { error } = await supabase.storage
     .from("pdfs")
-    .upload(fileName, pdfBytes, {
+    .upload(fileName, pdfBuffer, {
       contentType: "application/pdf",
       upsert: true,
     });
 
-  if (error) throw error;
+  if (error) {
+    console.error("Supabase upload failed:", error.message);
+    throw error;
+  }
 
   const { data } = supabase.storage.from("pdfs").getPublicUrl(fileName);
+  console.log("Upload successful. Public URL:", data.publicUrl);
   return data.publicUrl;
 }
 
