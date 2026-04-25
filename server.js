@@ -132,7 +132,8 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
       if (leadData) leadId = leadData.id;
       
       const pdfBuffer = Buffer.from(generated.pdfBytes);
-      const uploadedUrl = await uploadPdfToSupabase(assetId, pdfBuffer);
+      const friendlyName = `${(leadProfile.name || "Lead").replace(/\s+/g, "-")}-Scaler-Brief.pdf`;
+      const uploadedUrl = await uploadPdfToSupabase(assetId, pdfBuffer, friendlyName);
       if (uploadedUrl) pdfUrl = uploadedUrl;
     } catch (supabaseErr) {
       console.warn("Supabase storage sync failed:", supabaseErr.message);
@@ -237,7 +238,15 @@ app.post("/api/approve-send", async (req, res) => {
     }
 
     const body = editedMessage || asset.coverMessage;
-    const mediaUrl = asset.pdfUrl; // Use the Supabase URL
+    const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+    const host = req.get("host");
+    const fullBaseUrl = `${protocol}://${host}`;
+
+    let mediaUrl = asset.pdfUrl;
+    if (mediaUrl && !mediaUrl.startsWith("http")) {
+      mediaUrl = `${fullBaseUrl}${mediaUrl}`;
+    }
+
     const sendResult = await sendWhatsappMessage({
       to: asset.leadWhatsapp,
       body,
@@ -1433,8 +1442,9 @@ async function saveLeadToSupabase(leadProfile) {
   return data;
 }
 
-async function uploadPdfToSupabase(assetId, pdfBuffer) {
-  const fileName = `${assetId}.pdf`;
+async function uploadPdfToSupabase(assetId, pdfBuffer, friendlyName) {
+  // We use the friendly name as the actual path so it looks good to the user
+  const fileName = friendlyName || `${assetId}.pdf`;
   const bucketName = "pdfs";
 
   // Ensure bucket exists
@@ -1442,11 +1452,9 @@ async function uploadPdfToSupabase(assetId, pdfBuffer) {
     const { data: bucketData, error: bucketError } = await supabase.storage.getBucket(bucketName);
     if (bucketError || !bucketData) {
       console.log(`Bucket '${bucketName}' not found, attempting to create...`);
-      const { error: createError } = await supabase.storage.createBucket(bucketName, {
+      await supabase.storage.createBucket(bucketName, {
         public: true,
-        fileSizeLimit: 5242880, // 5MB
       });
-      if (createError) console.warn("Bucket creation failed (might already exist):", createError.message);
     }
   } catch (err) {
     console.warn("Storage bucket check skipped/failed:", err.message);
@@ -1457,14 +1465,18 @@ async function uploadPdfToSupabase(assetId, pdfBuffer) {
     .from(bucketName)
     .upload(fileName, pdfBuffer, {
       contentType: "application/pdf",
+      cacheControl: "3600",
       upsert: true,
+      // This header helps when downloading
+      contentDisposition: `inline; filename="${fileName}"`,
     });
 
   if (error) {
     console.error("Supabase storage upload error:", error);
-    throw new Error(`Storage upload failed: ${error.message} (Code: ${error.statusCode || "unknown"})`);
+    throw error;
   }
 
+  // We use the UUID as the key but return a URL with a friendly filename hint if possible
   const { data } = supabase.storage.from(bucketName).getPublicUrl(fileName);
   return data.publicUrl;
 }
