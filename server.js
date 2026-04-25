@@ -187,7 +187,6 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
       coverMessage: generated.coverMessage,
       pdfPreviewHtml: generated.previewHtml,
       pdfUrl,
-      pdfBytesBase64: pdfBase64,
       approvalRequired: true,
     });
   } catch (error) {
@@ -289,12 +288,25 @@ app.get("/assets/:assetId.pdf", async (req, res) => {
       pdfBuffer = Buffer.from(asset.pdfBytes);
     } else {
       // Fallback: Try to fetch from Supabase storage if not in memory
+      console.log(`Asset ${assetId} missing from memory, checking Supabase...`);
       const { data, error } = await supabase.storage.from("pdfs").download(fileName);
-      if (error || !data) {
-        console.error(`Asset ${assetId} not found in Supabase storage:`, error?.message);
-        return res.status(404).send(`PDF ${assetId} not found in memory or storage.`);
+      
+      if (!error && data) {
+        pdfBuffer = Buffer.from(await data.arrayBuffer());
+      } else {
+        // ULTIMATE FALLBACK: Re-render if we have metadata
+        console.log(`PDF file missing, checking for metadata to re-render...`);
+        const { data: metaData, error: metaError } = await supabase.storage.from("pdfs").download(`${assetId}.json`);
+        if (!metaError && metaData) {
+          const text = await metaData.text();
+          const meta = JSON.parse(text);
+          // Re-generate on the fly
+          const reGenerated = await renderPdf(meta, meta.strategy, meta.leadProfile);
+          pdfBuffer = Buffer.from(reGenerated);
+        } else {
+          return res.status(404).send(`Brief ${assetId} could not be found or re-generated.`);
+        }
       }
-      pdfBuffer = Buffer.from(await data.arrayBuffer());
     }
 
     res.setHeader("Content-Type", "application/pdf");
