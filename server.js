@@ -134,12 +134,10 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
       const uploadedUrl = await uploadPdfToSupabase(assetId, pdfBuffer);
       if (uploadedUrl) pdfUrl = uploadedUrl;
     } catch (supabaseErr) {
-      console.error("Critical Supabase error:", supabaseErr);
-      return res.status(500).json({ 
-        error: "Failed to persist PDF to storage. Please check Supabase configuration.",
-        details: supabaseErr.message 
-      });
+      console.warn("Supabase storage sync failed (using Base64 fallback):", supabaseErr.message);
     }
+
+    const pdfBase64 = Buffer.from(generated.pdfBytes).toString("base64");
 
     generatedAssets.set(assetId, {
       id: assetId,
@@ -166,6 +164,7 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
       coverMessage: generated.coverMessage,
       pdfPreviewHtml: generated.previewHtml,
       pdfUrl,
+      pdfBytesBase64: pdfBase64,
       approvalRequired: true,
     });
   } catch (error) {
@@ -1358,22 +1357,37 @@ async function saveLeadToSupabase(leadProfile) {
 
 async function uploadPdfToSupabase(assetId, pdfBuffer) {
   const fileName = `${assetId}.pdf`;
-  console.log(`Uploading ${fileName} to Supabase...`);
-  
+  const bucketName = "pdfs";
+
+  // Ensure bucket exists
+  try {
+    const { data: bucketData, error: bucketError } = await supabase.storage.getBucket(bucketName);
+    if (bucketError || !bucketData) {
+      console.log(`Bucket '${bucketName}' not found, attempting to create...`);
+      const { error: createError } = await supabase.storage.createBucket(bucketName, {
+        public: true,
+        fileSizeLimit: 5242880, // 5MB
+      });
+      if (createError) console.warn("Bucket creation failed (might already exist):", createError.message);
+    }
+  } catch (err) {
+    console.warn("Storage bucket check skipped/failed:", err.message);
+  }
+
+  console.log(`Uploading ${fileName} to bucket '${bucketName}'...`);
   const { error } = await supabase.storage
-    .from("pdfs")
+    .from(bucketName)
     .upload(fileName, pdfBuffer, {
       contentType: "application/pdf",
       upsert: true,
     });
 
   if (error) {
-    console.error("Supabase upload failed:", error.message);
-    throw error;
+    console.error("Supabase storage upload error:", error);
+    throw new Error(`Storage upload failed: ${error.message} (Code: ${error.statusCode || "unknown"})`);
   }
 
-  const { data } = supabase.storage.from("pdfs").getPublicUrl(fileName);
-  console.log("Upload successful. Public URL:", data.publicUrl);
+  const { data } = supabase.storage.from(bucketName).getPublicUrl(fileName);
   return data.publicUrl;
 }
 
