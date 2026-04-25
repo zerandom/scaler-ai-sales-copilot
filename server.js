@@ -1200,7 +1200,6 @@ async function renderPdf(assetData, strategy, leadProfile) {
     r(pg, leftX, topY - cardH, colW, cardH, rgb(235/255, 244/255, 255/255));
     // clipboard icon (rect + lines)
     r(pg, leftX + 14, topY - 30, 28, 22, blue);
-    page?.drawText; // no-op placeholder
     for (let li = 0; li < 3; li++) {
       pg.drawLine({ start: {x: leftX+19, y: topY - 36 - li*5}, end: {x: leftX+36, y: topY - 36 - li*5}, thickness: 1, color: white });
     }
