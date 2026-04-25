@@ -858,7 +858,8 @@ async function generateLeadAsset({ leadProfile, transcript, insights, evidence, 
       leadProfile,
       evidence
     );
-  } catch {
+  } catch (err) {
+    console.error("generateLeadAsset fallback triggered:", err.message);
     return await materializeLeadAsset(fallback, strategy, leadProfile, evidence);
   }
 }
@@ -1187,7 +1188,16 @@ async function runChatCompletion({ model, system, user, temperature }) {
   }
 
   const payload = await response.json();
-  return payload.choices?.[0]?.message?.content || "{}";
+  let content = payload.choices?.[0]?.message?.content || "{}";
+  
+  // Clean markdown JSON wrappers
+  content = content.trim();
+  if (content.startsWith("```")) {
+    content = content.replace(/^```[a-zA-Z]*\n?/, "");
+    content = content.replace(/\n?```$/, "");
+  }
+  
+  return content.trim();
 }
 
 function ensureArray(value, fallback) {
