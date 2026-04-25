@@ -127,17 +127,16 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
     let pdfUrl = `${baseUrl}/assets/${assetId}.pdf`; 
 
     try {
-      const lead = await saveLeadToSupabase(leadProfile);
-      leadId = lead.id;
+      const { data: leadData, error: leadError } = await saveLeadToSupabase(leadProfile);
+      if (leadError) console.warn("Lead save warning:", leadError.message);
+      if (leadData) leadId = leadData.id;
       
       const pdfBuffer = Buffer.from(generated.pdfBytes);
       const uploadedUrl = await uploadPdfToSupabase(assetId, pdfBuffer);
       if (uploadedUrl) pdfUrl = uploadedUrl;
     } catch (supabaseErr) {
-      console.warn("Supabase storage sync failed (using Base64 fallback):", supabaseErr.message);
+      console.warn("Supabase storage sync failed:", supabaseErr.message);
     }
-
-    const pdfBase64 = Buffer.from(generated.pdfBytes).toString("base64");
 
     generatedAssets.set(assetId, {
       id: assetId,
@@ -271,6 +270,16 @@ app.post("/api/approve-send", async (req, res) => {
   } catch (error) {
     return res.status(500).json({ error: error.message || "Failed to approve and send asset." });
   }
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error("Unhandled Error:", err);
+  res.status(500).json({ 
+    error: "Internal Server Error", 
+    message: err.message,
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined
+  });
 });
 
 if (isMainModule) {
