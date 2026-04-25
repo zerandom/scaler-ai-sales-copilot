@@ -129,10 +129,10 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
     try {
       const lead = await saveLeadToSupabase(leadProfile);
       leadId = lead.id;
-      const uploadedUrl = await uploadPdfToSupabase(assetId, generated.pdfBytes);
+      const uploadedUrl = await uploadPdfToSupabase(assetId, Buffer.from(generated.pdfBytes));
       if (uploadedUrl) pdfUrl = uploadedUrl;
     } catch (supabaseErr) {
-      console.warn("Supabase integration failed (non-fatal):", supabaseErr.message);
+      console.error("Supabase integration error:", supabaseErr);
     }
 
     generatedAssets.set(assetId, {
@@ -160,7 +160,7 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
       coverMessage: generated.coverMessage,
       pdfPreviewHtml: generated.previewHtml,
       pdfUrl,
-      pdfBytesBase64: generated.pdfBytes.toString("base64"),
+      pdfBytesBase64: Buffer.from(generated.pdfBytes).toString("base64"),
       approvalRequired: true,
     });
   } catch (error) {
@@ -248,7 +248,8 @@ app.get("/assets/:assetId.pdf", async (req, res) => {
       // Fallback: Try to fetch from Supabase storage if not in memory
       const { data, error } = await supabase.storage.from("pdfs").download(fileName);
       if (error || !data) {
-        return res.status(404).send("PDF not found in memory or storage.");
+        console.error(`Asset ${assetId} not found in Supabase storage:`, error?.message);
+        return res.status(404).send(`PDF ${assetId} not found in memory or storage.`);
       }
       pdfBuffer = Buffer.from(await data.arrayBuffer());
     }
