@@ -343,9 +343,22 @@ function parseJsonMaybe(value) {
 }
 
 function normalizeLeadProfile(input = {}) {
+  let role = (input.role || "").trim();
+  let company = "";
+  if (role.includes(" at ")) {
+    const parts = role.split(" at ");
+    role = parts[0].trim();
+    company = parts[1].trim();
+  } else if (role.includes(",")) {
+    const parts = role.split(",");
+    role = parts[0].trim();
+    company = parts[1].trim();
+  }
+
   return {
     name: (input.name || "").trim(),
-    role: (input.role || "").trim(),
+    role,
+    company,
     experience: (input.experience || "").trim(),
     intent: (input.intent || "").trim(),
     links: (input.links || "").trim(),
@@ -736,7 +749,7 @@ async function generateLeadAsset({ leadProfile, transcript, insights, evidence, 
     "Return ONLY valid JSON with these exact keys:",
     "cover_message: short personalized WhatsApp message (string)",
     "subtitle: one line tagline for the cover (string)",
-    "situation_items: exactly 4 objects {icon_letter (1 char), title, description} describing where the lead stands today",
+    "situation_items: exactly 5 objects {icon_letter (1 char), title, description} describing where the lead stands today",
     "goals: exactly 3 objects {icon_letter (1-2 chars), title, description} representing their career goals",
     "target_roles: array of 4-6 job title strings they are targeting",
     "pull_quote: one powerful sentence about their career journey (string)",
@@ -746,6 +759,7 @@ async function generateLeadAsset({ leadProfile, transcript, insights, evidence, 
     "next_step_title: title for the CTA slide (string)",
     "next_step_body: 1-2 sentence description of the assessment (string)",
     "why_take_it: exactly 4 short strings (checklist items for why to take the assessment)",
+    "CRITICAL: You MUST adopt the persona strategy voice exactly. Your output must read visibly differently depending on the strategy. Do not converge to a generic middle.",
     "Use only grounded evidence. Be specific to this lead. No generic marketing.",
     `Lead: ${JSON.stringify(leadProfile)}`,
     `Persona strategy: ${JSON.stringify(strategy)}`,
@@ -756,7 +770,7 @@ async function generateLeadAsset({ leadProfile, transcript, insights, evidence, 
 
   try {
     const payload = await runChatCompletion({
-      model: process.env.OPENROUTER_GENERATION_MODEL || "openrouter/free",
+      model: process.env.OPENROUTER_GENERATION_MODEL || "anthropic/claude-3-5-haiku",
       system:
         "You produce warm, polished JSON only. Do not fabricate facts. Do not wrap JSON in markdown.",
       user: prompt,
@@ -805,9 +819,10 @@ function buildFallbackLeadAsset({ leadProfile, insights, evidence, strategy }) {
       coverMessage: `Hi ${first}, sharing a focused summary on the questions you raised: applied depth, cohort quality, and where a structured program still adds leverage at your level.`,
       subtitle: "A practical read on where structured execution adds value beyond self-study.",
       situationItems: [
-        { icon_letter: "Y", title: `${leadProfile.experience || "7+"} years at ${leadProfile.role || "a tech company"}`, description: "Strong fundamentals and production experience already in place." },
+        { icon_letter: "Y", title: `${leadProfile.experience || "7+"} years at ${leadProfile.company || leadProfile.role || "a tech company"}`, description: "Strong fundamentals and production experience already in place." },
         { icon_letter: "A", title: "Self-directed AI upskilling", description: "Reading papers, running experiments, exploring models independently." },
         { icon_letter: "G", title: "Evaluating structured programs", description: "Looking for whether a cohort-based program adds real leverage beyond solo study." },
+        { icon_letter: "P", title: "Peer-level criteria", description: "Determining if the cohort and instructors truly operate at a senior practitioner level." },
         { icon_letter: "Q", title: "Key questions", description: "Cohort seniority, instructor caliber, project depth — are these genuinely at your level?", is_good_news: false },
       ],
       goals: [
@@ -844,6 +859,7 @@ function buildFallbackLeadAsset({ leadProfile, insights, evidence, strategy }) {
       situationItems: [
         { icon_letter: "S", title: `${leadProfile.role || "Final year student"} at a crossroads`, description: "Weighing a secure offer against the possibility of a better long-term career path." },
         { icon_letter: "F", title: "Family confidence matters", description: "The decision needs to feel credible to your family, not just to you." },
+        { icon_letter: "E", title: "Financial sensitivity", description: "High stakes regarding the program fee and need for clear financing terms." },
         { icon_letter: "T", title: "Entrance test concern", description: "Nervous about the screening process and what it means for your candidacy." },
         { icon_letter: "R", title: "The good news", description: "You don't need certainty today — you need the right information to decide clearly.", is_good_news: true },
       ],
@@ -878,9 +894,10 @@ function buildFallbackLeadAsset({ leadProfile, insights, evidence, strategy }) {
     coverMessage: `Hi ${first}, sharing a personalized summary from our call — focused on the move you want to make into product and AI roles, and where Scaler appears to add real leverage.`,
     subtitle: "Built for your goals. Backed by real outcomes.",
     situationItems: [
-      { icon_letter: "R", title: `${leadProfile.experience || "4 years"} at ${leadProfile.role || "a service company"}`, description: "Working on backend systems with strong fundamentals and production experience." },
+      { icon_letter: "R", title: `${leadProfile.experience || "4 years"} at ${leadProfile.company || leadProfile.role || "a service company"}`, description: "Working on backend systems with strong fundamentals and production experience." },
       { icon_letter: "A", title: "Actively upskilling", description: "Completed AWS certification — a clear signal of your intent to grow." },
       { icon_letter: "C", title: "Career crossroads", description: "Ready to move from service-based to product company and AI-driven roles." },
+      { icon_letter: "I", title: "Seeking applied depth", description: "Looking for real LLM applications like RAG and agents, not just theory." },
       { icon_letter: "G", title: "The good news", description: "You already have the right foundation. You don't need to start from scratch — you need the right direction and depth.", is_good_news: true },
     ],
     goals: [
