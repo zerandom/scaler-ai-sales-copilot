@@ -160,6 +160,7 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
       coverMessage: generated.coverMessage,
       pdfPreviewHtml: generated.previewHtml,
       pdfUrl,
+      pdfBytesBase64: generated.pdfBytes.toString("base64"),
       approvalRequired: true,
     });
   } catch (error) {
@@ -895,7 +896,6 @@ function renderPreviewHtml(assetData, strategy, leadProfile) {
   `;
 }
 
-
 async function renderPdf(assetData, strategy, leadProfile) {
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -904,183 +904,114 @@ async function renderPdf(assetData, strategy, leadProfile) {
   // A4 Landscape
   const W = 841;
   const H = 595;
-  const M = 40; // margin
+  const M = 45; // margin
 
-  // Color palette
+  // Brand Palette
   const navy   = rgb(14/255, 34/255, 56/255);
   const blue   = rgb(26/255, 58/255, 107/255);
+  const orange = rgb(255/255, 107/255, 34/255);
   const white  = rgb(1, 1, 1);
-  const light  = rgb(245/255, 247/255, 251/255);
-  const bodyTxt = rgb(26/255, 26/255, 46/255);
+  const light  = rgb(248/255, 250/255, 253/255);
   const gray   = rgb(107/255, 114/255, 128/255);
-  const orange = rgb(232/255, 83/255, 26/255);
-  const chipBg = rgb(232/255, 240/255, 254/255);
-  const chipTx = rgb(26/255, 58/255, 107/255);
   const green  = rgb(52/255, 168/255, 83/255);
-  const cardBg = rgb(248/255, 249/255, 252/255);
+  const cardBg = rgb(1, 1, 1);
+  const chipBg = rgb(235/255, 244/255, 255/255);
 
-  // ── helpers ──────────────────────────────────────────────────────────────
-  function r(page, x, y, w, h, color) {
-    page.drawRectangle({ x, y, width: w, height: h, color });
-  }
-  function ctr(page, txt, x, avail, y, size, f, color) {
-    const tw = f.widthOfTextAtSize(txt, size);
-    page.drawText(txt, { x: x + Math.max(0, (avail - tw) / 2), y, size, font: f, color });
-  }
-  function circ(page, cx, cy, radius, color) {
-    page.drawCircle({ x: cx, y: cy, size: radius, color });
-  }
-  function iconCircle(page, cx, cy, radius, letter, bg, fg) {
-    circ(page, cx, cy, radius, bg);
-    const s = Math.max(6, radius * 0.75);
+  // ── DRAWING HELPERS ───────────────────────────────────────────────────────
+  const r = (pg, x, y, w, h, color) => pg.drawRectangle({ x, y, width: w, height: h, color });
+  const circ = (pg, cx, cy, r, color) => pg.drawCircle({ x: cx, y: cy, size: r, color });
+  const icon = (pg, cx, cy, radius, letter, bg, fg) => {
+    circ(pg, cx, cy, radius, bg);
+    const s = radius * 0.7;
     const tw = bold.widthOfTextAtSize(letter, s);
-    page.drawText(letter, { x: cx - tw / 2, y: cy - s * 0.38, size: s, font: bold, color: fg });
-  }
-  function pill(page, x, y, txt, f, size = 9) {
-    const tw = f.widthOfTextAtSize(txt, size);
-    const pw = tw + 14; const ph = size + 7;
-    r(page, x, y, pw, ph, chipBg);
-    page.drawText(txt, { x: x + 7, y: y + 4, size, font: f, color: chipTx });
-    return pw;
-  }
-  function slideHeader(page, num, title, sub) {
+    pg.drawText(letter, { x: cx - tw / 2, y: cy - s * 0.35, size: s, font: bold, color: fg });
+  };
+  const slideHeader = (pg, num, title, sub) => {
     const bsz = 32;
-    r(page, M, H - M - bsz, bsz, bsz, navy);
-    ctr(page, num, M, bsz, H - M - bsz + 9, 13, bold, white);
-    page.drawText(title, { x: M + bsz + 10, y: H - M - 22, size: 18, font: bold, color: bodyTxt });
-    if (sub) page.drawText(sub, { x: M + bsz + 10, y: H - M - 38, size: 10, font, color: gray });
-  }
-  function pageNum(page, n) {
-    const tw = font.widthOfTextAtSize(String(n), 9);
-    page.drawText(String(n), { x: W - M - tw, y: 14, size: 9, font, color: gray });
-  }
-
-  // ── mountain illustration ─────────────────────────────────────────────────
-  function drawMountain(page, ox, oy, w, h) {
-    const baseY = oy + h * 0.12;
-    const peakX = ox + w * 0.52;
-    const peakY = oy + h * 0.82;
-    const sm1X  = ox + w * 0.28;
-    const sm1Y  = oy + h * 0.58;
-    // large mountain
-    page.drawLine({ start: {x: ox + w*0.08, y: baseY}, end: {x: peakX, y: peakY}, thickness: 2, color: navy });
-    page.drawLine({ start: {x: ox + w*0.92, y: baseY}, end: {x: peakX, y: peakY}, thickness: 2, color: navy });
-    // small left peak
-    page.drawLine({ start: {x: ox + w*0.05, y: baseY}, end: {x: sm1X, y: sm1Y}, thickness: 1.5, color: blue });
-    page.drawLine({ start: {x: ox + w*0.46, y: baseY}, end: {x: sm1X, y: sm1Y}, thickness: 1.5, color: blue });
-    // path dots
-    const pts = [
-      [ox + w*0.24, baseY + h*0.04],
-      [ox + w*0.33, baseY + h*0.16],
-      [ox + w*0.40, baseY + h*0.28],
-      [ox + w*0.46, baseY + h*0.44],
-      [peakX, peakY],
-    ];
-    for (const [px, py] of pts) circ(page, px, py, 4, navy);
-    // flag pole + flag
-    page.drawLine({ start: {x: peakX, y: peakY}, end: {x: peakX, y: peakY + 22}, thickness: 1.5, color: navy });
-    r(page, peakX, peakY + 12, 14, 10, orange);
-    // person (stick figure)
-    const px2 = ox + w*0.76, py2 = baseY + h*0.06;
-    circ(page, px2, py2 + 13, 5, blue);
-    page.drawLine({ start: {x: px2, y: py2+8}, end: {x: px2, y: py2-4}, thickness: 1.5, color: blue });
-    page.drawLine({ start: {x: px2-5, y: py2+2}, end: {x: px2+5, y: py2+2}, thickness: 1.5, color: blue });
-    page.drawLine({ start: {x: px2, y: py2-4}, end: {x: px2-4, y: py2-12}, thickness: 1.5, color: blue });
-    page.drawLine({ start: {x: px2, y: py2-4}, end: {x: px2+4, y: py2-12}, thickness: 1.5, color: blue });
-    // horizon line
-    page.drawLine({ start: {x: ox, y: baseY}, end: {x: ox+w, y: baseY}, thickness: 0.5, color: chipBg });
-  }
+    r(pg, M, H - M - bsz, bsz, bsz, blue);
+    const tw = bold.widthOfTextAtSize(num, 13);
+    pg.drawText(num, { x: M + (bsz - tw) / 2, y: H - M - bsz + 9, size: 13, font: bold, color: white });
+    pg.drawText(title, { x: M + bsz + 12, y: H - M - 22, size: 20, font: bold, color: navy });
+    if (sub) pg.drawText(sub, { x: M + bsz + 12, y: H - M - 38, size: 10, font, color: gray });
+  };
 
   // ══════════════════════════════════════════════════════════════════════════
-  // SLIDE 1 — COVER
+  // SLIDE 1: COVER
   // ══════════════════════════════════════════════════════════════════════════
   {
     const pg = pdfDoc.addPage([W, H]);
-    const leftW = 290;
+    const leftW = 320;
     r(pg, 0, 0, leftW, H, navy);
     r(pg, leftW, 0, W - leftW, H, light);
 
-    // logo
-    pg.drawText("SCALER", { x: M, y: H - M - 6, size: 15, font: bold, color: white });
-    r(pg, M + bold.widthOfTextAtSize("SCALER", 15) + 4, H - M - 6, 10, 12, orange);
+    // Header / Logo
+    pg.drawText("SCALER", { x: M, y: H - M - 10, size: 18, font: bold, color: white });
+    r(pg, M + 85, H - M - 10, 12, 16, orange);
 
-    // hero headline
-    let hy = H - M - 58;
-    for (const line of ["Your Personalized", "Career Plan"]) {
-      pg.drawText(line, { x: M, y: hy, size: 24, font: bold, color: white });
-      hy -= 30;
-    }
-    // tagline
-    hy -= 6;
-    for (const line of wrapText(assetData.subtitle || "Built for your goals. Backed by real outcomes.", font, 10, leftW - M * 2)) {
-      pg.drawText(line, { x: M, y: hy, size: 10, font, color: rgb(0.82,0.82,0.82) });
-      hy -= 14;
-    }
-    // prepared for
-    hy -= 16;
-    pg.drawText("Prepared for", { x: M, y: hy, size: 9, font, color: rgb(0.65,0.65,0.65) });
-    hy -= 20;
-    pg.drawText(leadProfile.name, { x: M, y: hy, size: 16, font: bold, color: white });
-    hy -= 18;
-    const roleExp = [leadProfile.role, leadProfile.experience].filter(Boolean).join("  •  ");
-    if (roleExp) {
-      for (const line of wrapText(roleExp, font, 9, leftW - M * 2)) {
-        pg.drawText(line, { x: M, y: hy, size: 9, font, color: rgb(0.72,0.72,0.72) });
-        hy -= 13;
-      }
-    }
-    // "Based on your conversation" note
-    hy -= 14;
-    pg.drawText("Based on your conversation", { x: M, y: hy, size: 8, font, color: rgb(0.55,0.55,0.55) });
-    hy -= 11;
-    pg.drawText("with your Scaler BDA", { x: M, y: hy, size: 8, font, color: rgb(0.55,0.55,0.55) });
+    // Headline
+    let hy = H - M - 75;
+    const lines = ["Your Personalized", "Career Plan"];
+    for (const l of lines) { pg.drawText(l, { x: M, y: hy, size: 32, font: bold, color: white }); hy -= 40; }
+    
+    pg.drawText(assetData.subtitle || "Built for your goals. Backed by real outcomes.", { x: M, y: hy, size: 11, font, color: rgb(0.85, 0.85, 0.85) });
 
-    // CTA card at bottom
-    const ctaBoxY = 30, ctaBoxH = 72, ctaBoxW = leftW - M * 2;
-    r(pg, M, ctaBoxY, ctaBoxW, ctaBoxH, rgb(1,1,1));
-    r(pg, M, ctaBoxY, 3, ctaBoxH, orange);
-    pg.drawText("Next Step", { x: M + 12, y: ctaBoxY + ctaBoxH - 18, size: 10, font: bold, color: navy });
-    for (const line of wrapText("Take the assessment to unlock the right path for you.", font, 8, ctaBoxW - 20)) {
-      pg.drawText(line, { x: M + 12, y: ctaBoxY + ctaBoxH - 33, size: 8, font, color: gray });
-    }
+    // Profile Card
+    hy -= 60;
+    pg.drawText("Prepared for", { x: M, y: hy, size: 10, font, color: rgb(0.7, 0.7, 0.7) });
+    hy -= 25;
+    pg.drawText(leadProfile.name, { x: M, y: hy, size: 22, font: bold, color: white });
+    hy -= 22;
+    pg.drawText(`${leadProfile.role || ""}  •  ${leadProfile.experience || ""}`, { x: M, y: hy, size: 11, font, color: rgb(0.8, 0.8, 0.8) });
 
-    // mountain
-    drawMountain(pg, leftW + 10, 30, W - leftW - 20, H - 60);
-    pageNum(pg, 1);
+    // Bottom CTA
+    const bx = M, by = 40, bw = leftW - M * 2, bh = 80;
+    r(pg, bx, by, bw, bh, white);
+    r(pg, bx, by, 4, bh, orange);
+    pg.drawText("Next Step", { x: bx + 16, y: by + bh - 24, size: 11, font: bold, color: navy });
+    pg.drawText("Take the assessment to unlock", { x: bx + 16, y: by + bh - 42, size: 9, font, color: gray });
+    pg.drawText("the right path for you.", { x: bx + 16, y: by + bh - 54, size: 9, font, color: gray });
+
+    // Mountain Illustration (Right)
+    const mx = leftW + 40, my = 60, mw = W - leftW - 80, mh = H - 120;
+    // Simple stylized mountain
+    pg.drawLine({ start: {x: mx, y: my}, end: {x: mx + mw*0.5, y: my + mh}, thickness: 3, color: blue });
+    pg.drawLine({ start: {x: mx + mw, y: my}, end: {x: mx + mw*0.5, y: my + mh}, thickness: 3, color: blue });
+    // path dots
+    for (let i = 0; i < 5; i++) {
+      const px = mx + mw*0.1 + i*mw*0.08, py = my + i*mh*0.15;
+      circ(pg, px, py, 4, orange);
+    }
+    // flag
+    pg.drawLine({ start: {x: mx + mw*0.5, y: my + mh}, end: {x: mx + mw*0.5, y: my + mh + 25}, thickness: 2, color: blue });
+    r(pg, mx + mw*0.5, my + mh + 15, 18, 12, orange);
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // SLIDE 2 — WHERE YOU STAND TODAY
+  // SLIDE 2: WHERE YOU STAND
   // ══════════════════════════════════════════════════════════════════════════
   {
     const pg = pdfDoc.addPage([W, H]);
     r(pg, 0, 0, W, H, white);
     slideHeader(pg, "01", "Where You Stand Today", "A snapshot of your current situation");
 
-    const items = (assetData.situationItems || []).slice(0, 5);
-    const startY = H - M - 75;
-    const itemH  = Math.min(90, (startY - M - 20) / Math.max(items.length, 1));
-    const textX  = M + 50;
-    const textW  = W - textX - M;
+    const items = (assetData.situationItems || []).slice(0, 4);
+    let iy = H - 130;
+    const cardW = W - M * 2, cardH = 85;
 
-    items.forEach((item, i) => {
-      const iy = startY - i * itemH;
-      const letter = (item.icon_letter || item.title.charAt(0)).toUpperCase().substring(0,2);
-      iconCircle(pg, M + 20, iy - 6, 16, letter, item.is_good_news ? rgb(0.9,0.97,0.92) : light, item.is_good_news ? green : blue);
-      pg.drawText(item.title, { x: textX, y: iy, size: 11, font: bold, color: bodyTxt });
-      let dy = iy - 14;
-      for (const ln of wrapText(item.description || "", font, 9, textW).slice(0, 3)) {
-        pg.drawText(ln, { x: textX, y: dy, size: 9, font, color: gray });
-        dy -= 12;
+    items.forEach((it, i) => {
+      r(pg, M, iy - cardH, cardW, cardH, light);
+      icon(pg, M + 35, iy - cardH/2, 18, (it.icon_letter || "•"), blue, white);
+      pg.drawText(it.title, { x: M + 70, y: iy - 32, size: 13, font: bold, color: navy });
+      let dy = iy - 48;
+      for (const line of wrapText(it.description, font, 9, cardW - 90).slice(0, 2)) {
+        pg.drawText(line, { x: M + 70, y: dy, size: 10, font, color: gray }); dy -= 14;
       }
-      if (i < items.length - 1)
-        pg.drawLine({ start: {x: textX, y: iy - itemH + 10}, end: {x: W - M, y: iy - itemH + 10}, thickness: 0.5, color: chipBg });
+      iy -= cardH + 12;
     });
-    pageNum(pg, 2);
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // SLIDE 3 — YOUR GOALS
+  // SLIDE 3: GOALS
   // ══════════════════════════════════════════════════════════════════════════
   {
     const pg = pdfDoc.addPage([W, H]);
@@ -1088,49 +1019,50 @@ async function renderPdf(assetData, strategy, leadProfile) {
     slideHeader(pg, "02", "Your Goals", "What you want to achieve next");
 
     const goals = (assetData.goals || []).slice(0, 3);
-    const cardsY = H - M - 75;
-    const cardW  = Math.floor((W - M * 2 - 24) / 3);
-    const cardH  = 120;
+    const cardW = (W - M * 2 - 40) / 3;
+    const cardH = 160;
+    const startY = H - 150;
 
-    goals.forEach((goal, i) => {
-      const cx = M + i * (cardW + 12);
-      r(pg, cx, cardsY - cardH, cardW, cardH, light);
-      const letter = (goal.icon_letter || goal.title.charAt(0)).toUpperCase().substring(0,2);
-      iconCircle(pg, cx + cardW / 2, cardsY - 24, 16, letter, blue, white);
-      const tLines = wrapText(goal.title, bold, 10, cardW - 12).slice(0, 2);
-      let ty = cardsY - 52;
-      for (const l of tLines) { ctr(pg, l, cx, cardW, ty, 10, bold, bodyTxt); ty -= 13; }
-      for (const l of wrapText(goal.description || "", font, 8, cardW - 12).slice(0, 3)) {
-        ctr(pg, l, cx, cardW, ty, 8, font, gray); ty -= 11;
+    goals.forEach((g, i) => {
+      const gx = M + i * (cardW + 20);
+      r(pg, gx, startY - cardH, cardW, cardH, light);
+      icon(pg, gx + cardW/2, startY - 30, 20, (g.icon_letter || "G"), blue, white);
+      
+      const tLines = wrapText(g.title, bold, 12, cardW - 20).slice(0, 2);
+      let ty = startY - 70;
+      for (const l of tLines) {
+        const tw = bold.widthOfTextAtSize(l, 12);
+        pg.drawText(l, { x: gx + (cardW - tw)/2, y: ty, size: 12, font: bold, color: navy });
+        ty -= 16;
+      }
+      
+      for (const l of wrapText(g.description, font, 9, cardW - 20).slice(0, 3)) {
+        const tw = font.widthOfTextAtSize(l, 9);
+        pg.drawText(l, { x: gx + (cardW - tw)/2, y: ty, size: 9, font, color: gray });
+        ty -= 13;
       }
     });
 
-    // Role pills
-    let ry = cardsY - cardH - 22;
-    pg.drawText("Roles you are targeting", { x: M, y: ry, size: 10, font: bold, color: bodyTxt });
-    ry -= 18;
-    let pillX = M;
-    for (const role of (assetData.targetRoles || [])) {
-      const pw = font.widthOfTextAtSize(role, 9) + 14;
-      if (pillX + pw > W - M) { pillX = M; ry -= 22; }
-      pill(pg, pillX, ry, role, font, 9);
-      pillX += pw + 8;
-    }
+    // Target roles pill row
+    const py = 120;
+    pg.drawText("Roles you are targeting", { x: M, y: py, size: 12, font: bold, color: navy });
+    let px = M;
+    (assetData.targetRoles || []).forEach(role => {
+      const rw = font.widthOfTextAtSize(role, 9) + 20;
+      r(pg, px, py - 30, rw, 22, chipBg);
+      pg.drawText(role, { x: px + 10, y: py - 22, size: 9, font: bold, color: blue });
+      px += rw + 10;
+    });
 
-    // Pull quote
-    ry -= 36;
-    if (assetData.pullQuote && ry > M + 20) {
-      pg.drawText("\u201C", { x: M, y: ry, size: 20, font: bold, color: navy });
-      let qy = ry - 2;
-      for (const l of wrapText(assetData.pullQuote, font, 9, W - M * 2 - 22).slice(0, 2)) {
-        pg.drawText(l, { x: M + 18, y: qy, size: 9, font, color: bodyTxt }); qy -= 13;
-      }
+    // Pull Quote
+    if (assetData.pullQuote) {
+      r(pg, M, 40, W - M * 2, 50, rgb(0.95, 0.98, 1));
+      pg.drawText(`"${assetData.pullQuote}"`, { x: M + 20, y: 58, size: 11, font: bold, color: blue, italic: true });
     }
-    pageNum(pg, 3);
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // SLIDE 4 — YOUR KEY QUESTIONS, ANSWERED
+  // SLIDE 4: Q&A
   // ══════════════════════════════════════════════════════════════════════════
   {
     const pg = pdfDoc.addPage([W, H]);
@@ -1138,38 +1070,28 @@ async function renderPdf(assetData, strategy, leadProfile) {
     slideHeader(pg, "03", "Your Key Questions, Answered", "Honest answers to what matters most to you");
 
     const qas = (assetData.questionsAnswered || []).slice(0, 3);
-    const startY = H - M - 80;
-    const qaH    = Math.min(110, (startY - M - 60) / Math.max(qas.length, 1));
-
-    qas.forEach((qa, i) => {
-      const qy = startY - i * qaH;
-      const letter = (qa.icon_letter || "Q").toUpperCase().substring(0,2);
-      iconCircle(pg, M + 18, qy - 6, 16, letter, light, blue);
-      pg.drawCircle({ x: M+18, y: qy-6, size: 16, borderColor: chipBg, borderWidth: 1 });
-      const qLines = wrapText(`"${qa.question}"`, bold, 10, W - M * 2 - 48).slice(0, 2);
-      let ty = qy;
-      for (const l of qLines) { pg.drawText(l, { x: M+44, y: ty, size: 10, font: bold, color: bodyTxt }); ty -= 13; }
-      for (const l of wrapText(qa.answer || "", font, 9, W - M * 2 - 48).slice(0, 3)) {
-        pg.drawText(l, { x: M+44, y: ty, size: 9, font, color: gray }); ty -= 12;
+    let qy = H - 130;
+    qas.forEach(qa => {
+      const qH = 100;
+      r(pg, M, qy - qH, W - M * 2, qH, light);
+      icon(pg, M + 30, qy - 30, 15, "?", blue, white);
+      pg.drawText(qa.question, { x: M + 60, y: qy - 30, size: 12, font: bold, color: navy });
+      let dy = qy - 50;
+      for (const line of wrapText(qa.answer, font, 10, W - M * 2 - 80).slice(0, 3)) {
+        pg.drawText(line, { x: M + 60, y: dy, size: 10, font, color: gray }); dy -= 14;
       }
-      if (i < qas.length - 1)
-        pg.drawLine({ start: {x: M, y: qy - qaH + 10}, end: {x: W-M, y: qy - qaH + 10}, thickness: 0.5, color: chipBg });
+      qy -= qH + 15;
     });
 
-    // Bottom line box
     if (assetData.bottomLine) {
-      const blH = 42;
-      r(pg, M, M + 4, W - M * 2, blH, navy);
-      pg.drawText("Bottom line", { x: M+12, y: M + blH - 10, size: 9, font: bold, color: orange });
-      for (const l of wrapText(assetData.bottomLine, font, 9, W - M * 2 - 24).slice(0, 2)) {
-        pg.drawText(l, { x: M+12, y: M + blH - 24, size: 9, font, color: rgb(0.88,0.88,0.88) });
-      }
+      r(pg, M, 50, W - M * 2, 45, navy);
+      pg.drawText("Bottom Line:", { x: M + 15, y: 75, size: 10, font: bold, color: orange });
+      pg.drawText(assetData.bottomLine, { x: M + 85, y: 75, size: 10, font, color: white });
     }
-    pageNum(pg, 4);
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // SLIDE 5 — WHY SCALER IS THE RIGHT FIT
+  // SLIDE 5: WHY SCALER
   // ══════════════════════════════════════════════════════════════════════════
   {
     const pg = pdfDoc.addPage([W, H]);
@@ -1177,102 +1099,70 @@ async function renderPdf(assetData, strategy, leadProfile) {
     slideHeader(pg, "04", "Why Scaler is the Right Fit for You", "Designed for engineers. Built for outcomes.");
 
     const features = (assetData.whyScalerFeatures || []).slice(0, 6);
-    const cols = 2, rows = Math.ceil(features.length / cols);
-    const fW   = Math.floor((W - M * 2 - 16) / cols);
-    const fH   = 68;
-    const startY = H - M - 75;
-
-    features.forEach((feat, i) => {
-      const col = i % cols, row = Math.floor(i / cols);
-      const fx = M + col * (fW + 16);
-      const fy = startY - row * (fH + 8) - fH;
-      const letter = (feat.icon_letter || feat.title.charAt(0)).toUpperCase().substring(0,2);
-      iconCircle(pg, fx + 20, fy + fH - 20, 14, letter, light, blue);
-      pg.drawText(feat.title, { x: fx + 40, y: fy + fH - 16, size: 10, font: bold, color: bodyTxt });
-      let dy = fy + fH - 30;
-      for (const l of wrapText(feat.description || "", font, 8, fW - 44).slice(0, 2)) {
-        pg.drawText(l, { x: fx + 40, y: dy, size: 8, font, color: gray }); dy -= 11;
+    const fw = (W - M * 2 - 30) / 2;
+    const fh = 90;
+    features.forEach((f, i) => {
+      const col = i % 2, row = Math.floor(i / 2);
+      const fx = M + col * (fw + 30), fy = H - 160 - row * (fh + 20);
+      r(pg, fx, fy - fh, fw, fh, light);
+      icon(pg, fx + 25, fy - 25, 16, (f.icon_letter || "S"), blue, white);
+      pg.drawText(f.title, { x: fx + 50, y: fy - 30, size: 12, font: bold, color: navy });
+      let dy = fy - 48;
+      for (const line of wrapText(f.description, font, 9, fw - 60).slice(0, 3)) {
+        pg.drawText(line, { x: fx + 50, y: dy, size: 9, font, color: gray }); dy -= 13;
       }
     });
 
-    // Stats bar
-    const barH = 52;
-    r(pg, 0, 0, W, barH, navy);
-    const stats = [["1500+", "careers accelerated"], ["85%+", "of learners make a career shift"]];
-    stats.forEach(([val, lbl], i) => {
-      const sx = M + i * (W / 2);
-      pg.drawText(val, { x: sx, y: barH - 20, size: 18, font: bold, color: white });
-      pg.drawText(lbl, { x: sx, y: barH - 34, size: 8, font, color: rgb(0.7,0.7,0.7) });
-      if (i === 0) pg.drawLine({ start: {x: W/2, y: 8}, end: {x: W/2, y: barH - 6}, thickness: 0.5, color: rgb(0.3,0.4,0.5) });
-    });
-    pg.drawText("*Based on internal data", { x: W - M - font.widthOfTextAtSize("*Based on internal data", 7), y: 6, size: 7, font, color: rgb(0.5,0.5,0.5) });
-    pageNum(pg, 5);
+    // Stats Bar
+    r(pg, 0, 0, W, 60, navy);
+    pg.drawText("1500+ careers accelerated", { x: M, y: 25, size: 14, font: bold, color: white });
+    pg.drawText("85% learners make a career shift", { x: W/2, y: 25, size: 14, font: bold, color: white });
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // SLIDE 6 — YOUR NEXT STEP
+  // SLIDE 6: NEXT STEP
   // ══════════════════════════════════════════════════════════════════════════
   {
     const pg = pdfDoc.addPage([W, H]);
     r(pg, 0, 0, W, H, white);
     slideHeader(pg, "05", "Your Next Step", "A small step today for a big leap tomorrow.");
 
-    const colW  = (W - M * 2 - 24) / 2;
-    const leftX = M, rightX = M + colW + 24;
-    const topY  = H - M - 82;
-
-    // Left: Assessment card
-    const cardH = 220;
-    r(pg, leftX, topY - cardH, colW, cardH, rgb(235/255, 244/255, 255/255));
-    // clipboard icon (rect + lines)
-    r(pg, leftX + 14, topY - 30, 28, 22, blue);
-    for (let li = 0; li < 3; li++) {
-      pg.drawLine({ start: {x: leftX+19, y: topY - 36 - li*5}, end: {x: leftX+36, y: topY - 36 - li*5}, thickness: 1, color: white });
-    }
-    pg.drawText(assetData.nextStepTitle || "Take the Assessment", { x: leftX + 50, y: topY - 22, size: 12, font: bold, color: navy });
-    let ay = topY - 38;
-    for (const l of wrapText(assetData.nextStepBody || "", font, 9, colW - 16).slice(0, 3)) {
-      pg.drawText(l, { x: leftX + 12, y: ay, size: 9, font, color: gray }); ay -= 13;
-    }
-    // feature pills row
-    ay -= 12;
-    const fpills = ["Personalized feedback", "Right batch recommendation", "Clarity on your readiness"];
-    let fpillX = leftX + 12;
-    for (const fp of fpills) {
-      const fw = font.widthOfTextAtSize(fp, 7) + 10;
-      if (fpillX + fw > leftX + colW - 8) { fpillX = leftX + 12; ay -= 20; }
-      r(pg, fpillX, ay, fw, 16, chipBg);
-      pg.drawText(fp, { x: fpillX + 5, y: ay + 4, size: 7, font, color: chipTx });
-      fpillX += fw + 6;
+    const leftW = W * 0.55;
+    r(pg, M, 220, leftW - M, 180, chipBg);
+    pg.drawText(assetData.nextStepTitle || "Take the Assessment", { x: M + 20, y: 370, size: 18, font: bold, color: navy });
+    let dy = 340;
+    for (const l of wrapText(assetData.nextStepBody || "", font, 11, leftW - M - 40).slice(0, 4)) {
+      pg.drawText(l, { x: M + 20, y: dy, size: 11, font, color: gray }); dy -= 18;
     }
 
-    // Right: Why take it checklist
-    pg.drawText("Why take it?", { x: rightX, y: topY, size: 12, font: bold, color: bodyTxt });
-    let cy = topY - 22;
-    for (const item of (assetData.whyTakeIt || []).slice(0, 4)) {
-      circ(pg, rightX + 8, cy + 4, 7, rgb(0.9, 0.97, 0.92));
-      pg.drawText("v", { x: rightX + 5, y: cy + 1, size: 7, font: bold, color: green });
-      for (const l of wrapText(item, font, 9, colW - 30).slice(0, 1)) {
-        pg.drawText(l, { x: rightX + 22, y: cy, size: 9, font, color: bodyTxt });
-      }
-      cy -= 22;
-    }
+    // Why take it checklist
+    pg.drawText("Why take it?", { x: M, y: 180, size: 14, font: bold, color: navy });
+    let cy = 155;
+    (assetData.whyTakeIt || []).forEach(item => {
+      circ(pg, M + 10, cy + 4, 6, rgb(0.9, 0.98, 0.9));
+      pg.drawText("v", { x: M + 7, y: cy + 1, size: 8, font: bold, color: green });
+      pg.drawText(item, { x: M + 25, y: cy, size: 10, font, color: navy });
+      cy -= 20;
+    });
 
-    // Footer bar
-    const footH = 46;
-    r(pg, 0, 0, W, footH, navy);
-    pg.drawText("We're excited to be part of your journey.", { x: M, y: footH - 18, size: 10, font: bold, color: white });
-    pg.drawText("Let's build the future, together.", { x: M, y: footH - 32, size: 9, font, color: rgb(0.75,0.75,0.75) });
-    pg.drawText("SCALER", { x: W - M - bold.widthOfTextAtSize("SCALER", 14), y: footH - 22, size: 14, font: bold, color: white });
-    r(pg, W - M - bold.widthOfTextAtSize("SCALER", 14) - 14, footH - 22, 10, 13, orange);
-    pageNum(pg, 6);
+    // Illustration (Climber)
+    const ix = leftW + 20, iy = 100, iw = W - leftW - M - 20, ih = 300;
+    // Stairs
+    for (let i = 0; i < 5; i++) {
+      r(pg, ix + i*iw*0.2, iy + i*ih*0.2, iw*0.2, ih*0.2, blue);
+    }
+    // Person
+    circ(pg, ix + iw*0.7, iy + ih*0.8 + 20, 8, orange);
+    pg.drawLine({ start: {x: ix + iw*0.7, y: iy + ih*0.8 + 12}, end: {x: ix + iw*0.7, y: iy + ih*0.8 - 10}, thickness: 3, color: orange });
+
+    // Footer
+    r(pg, 0, 0, W, 40, navy);
+    pg.drawText("We're excited to be part of your journey.", { x: M, y: 15, size: 10, font, color: white });
+    pg.drawText("SCALER", { x: W - M - 80, y: 15, size: 14, font: bold, color: white });
   }
 
   return await pdfDoc.save();
 }
-
-
-
 
 function drawSection() {
   // legacy shim — no longer used by renderPdf but kept for safety

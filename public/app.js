@@ -271,7 +271,20 @@ async function handleGeneratePostcall() {
     elements.approvalMessage.value = payload.coverMessage;
     elements.approveSend.disabled = false;
     elements.skipSend.disabled = false;
-    elements.pdfLink.href = payload.pdfUrl;
+
+    // Use Base64 if available to avoid 404s on Vercel
+    if (payload.pdfBytesBase64) {
+      const binary = atob(payload.pdfBytesBase64);
+      const array = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
+      const blob = new Blob([array], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      elements.pdfLink.href = url;
+      elements.pdfLink.target = "_blank";
+    } else {
+      elements.pdfLink.href = payload.pdfUrl;
+    }
+    
     elements.pdfLink.style.display = "inline-flex";
     elements.pdfPreview.innerHTML = payload.pdfPreviewHtml;
 
