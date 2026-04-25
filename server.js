@@ -150,6 +150,10 @@ app.post("/api/generate-postcall", upload.single("audio"), async (req, res) => {
       strategy,
       insights,
       evidence,
+      pdfUrl,
+      coverMessage: generated.coverMessage,
+    });
+
     // Persist asset metadata for stateless approval
     const metadata = {
       id: assetId,
