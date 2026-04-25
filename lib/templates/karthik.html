@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');
+  
+  *, *::before, *::after { box-sizing: border-box; }
+  body { 
+    font-family: 'Manrope', sans-serif; 
+    margin: 0; padding: 0; 
+    color: #1a1a1a; 
+    background: #f2e8dc; /* cream */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  /* A4 Landscape */
+  .page { 
+    width: 297mm; height: 210mm; 
+    page-break-after: always; 
+    position: relative; 
+    overflow: hidden; 
+  }
+  
+  /* Colors */
+  :root {
+    --navy: #0e2234;
+    --orange: #c96b36;
+    --cream: #f2e8dc;
+    --gray-text: #4b5563;
+  }
+
+  /* PAGE 1: COVER */
+  .p1-layout { display: flex; height: 100%; border: 12px solid var(--cream); background: white; }
+  .p1-sidebar { 
+    width: 100px; background: var(--navy); color: var(--orange); 
+    display: flex; align-items: flex-start; justify-content: center; padding-top: 40px;
+  }
+  .p1-logo { font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; writing-mode: vertical-rl; transform: rotate(180deg); }
+  
+  .p1-main { 
+    flex: 1; padding: 80px; display: flex; flex-direction: column; justify-content: center; position: relative;
+  }
+  .p1-headline { font-size: 56px; font-weight: 700; color: var(--navy); line-height: 1.1; margin: 0 0 20px 0; max-width: 600px; }
+  .p1-name { font-size: 24px; font-weight: 600; color: var(--gray-text); margin: 0 0 5px 0; }
+  .p1-role { font-size: 16px; color: var(--gray-text); font-weight: 400; }
+  .p1-tagline { margin-top: 60px; font-size: 16px; font-weight: 500; color: var(--navy); border-left: 2px solid var(--orange); padding-left: 15px; }
+
+  /* Minimal Mountain graphic */
+  .p1-graphic { position: absolute; right: 40px; bottom: 40px; width: 300px; height: 200px; }
+
+  /* PAGE 2: CONTEXT */
+  .p2-layout { display: flex; flex-direction: column; height: 100%; padding: 40px; background: var(--cream); }
+  .p2-content { display: flex; gap: 40px; flex: 1; background: white; padding: 40px; border-radius: 4px; border-top: 4px solid var(--navy); }
+  
+  .p2-left { width: 45%; display: flex; flex-direction: column; gap: 10px; }
+  .p2-header { font-size: 24px; font-weight: 700; color: var(--navy); margin: 0 0 20px 0; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; }
+  
+  .sit-row { padding: 16px 0; border-bottom: 1px solid #f3f4f6; display: flex; gap: 15px; }
+  .sit-row.good-news { background: rgba(14,34,52,0.03); border-left: 3px solid var(--orange); padding-left: 15px; }
+  .sit-icon { font-weight: 700; color: var(--orange); width: 20px; }
+  .sit-text h4 { margin: 0 0 4px 0; font-size: 15px; color: var(--navy); }
+  .sit-text p { margin: 0; font-size: 13px; color: var(--gray-text); line-height: 1.5; }
+
+  .p2-right { width: 55%; display: flex; flex-direction: column; gap: 20px; }
+  .qa-row { padding-bottom: 20px; border-bottom: 1px solid #f3f4f6; }
+  .qa-q { font-weight: 700; font-size: 16px; color: var(--navy); font-style: italic; margin: 0 0 8px 0; }
+  .qa-a { margin: 0; font-size: 14px; color: var(--gray-text); line-height: 1.6; }
+  
+  .p2-quote { margin-top: 30px; font-size: 16px; font-style: italic; color: var(--navy); border-left: 3px solid var(--orange); padding-left: 15px; }
+
+  /* PAGE 3: WHY SCALER + CTA */
+  .p3-layout { display: flex; flex-direction: column; height: 100%; padding: 40px; background: var(--cream); }
+  .p3-content { background: white; padding: 40px; flex: 1; border-top: 4px solid var(--navy); display: flex; flex-direction: column; }
+  
+  .features-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 50px; }
+  .feat-row { display: flex; gap: 15px; }
+  .feat-icon { font-weight: 700; color: var(--orange); }
+  .feat-text h4 { margin: 0 0 5px 0; font-size: 15px; color: var(--navy); }
+  .feat-text p { margin: 0; font-size: 13px; color: var(--gray-text); line-height: 1.5; }
+
+  .cta-section { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding-top: 30px; border-top: 1px solid #e5e7eb; }
+  .cta-left { width: 60%; }
+  .cta-title { font-size: 24px; font-weight: 700; color: var(--navy); margin: 0 0 10px 0; }
+  .cta-body { font-size: 15px; color: var(--gray-text); margin: 0 0 20px 0; line-height: 1.5; }
+  .pills { display: flex; gap: 15px; }
+  .pill { font-size: 13px; font-weight: 600; color: var(--navy); display: flex; align-items: center; gap: 5px; }
+  .pill::before { content: "→"; color: var(--orange); }
+  
+  .cta-right { width: 100px; height: 100px; position: relative; }
+  .steps { position: absolute; right: 0; bottom: 0; display: flex; align-items: flex-end; }
+  .step1 { width: 30px; height: 30px; background: var(--navy); }
+  .step2 { width: 30px; height: 60px; background: var(--orange); }
+  .step3 { width: 30px; height: 90px; background: var(--navy); }
+
+</style>
+</head>
+<body>
+
+  <!-- PAGE 1 -->
+  <div class="page">
+    <div class="p1-layout">
+      <div class="p1-sidebar">
+        <div class="p1-logo">Scaler</div>
+      </div>
+      <div class="p1-main">
+        <h1 class="p1-headline">{{PAGE1_HEADLINE}}</h1>
+        <div class="p1-name">{{NAME}}</div>
+        <div class="p1-role">{{ROLE}}</div>
+        <div class="p1-tagline">{{PAGE1_TAGLINE}}</div>
+        
+        <svg class="p1-graphic" viewBox="0 0 200 100">
+          <path d="M 0,100 L 80,20 L 120,60 L 180,10 L 200,30" fill="none" stroke="var(--navy)" stroke-width="2"/>
+          <circle cx="180" cy="10" r="4" fill="var(--orange)"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 2 -->
+  <div class="page">
+    <div class="p2-layout">
+      <div class="p2-content">
+        <div class="p2-left">
+          <h2 class="p2-header">Where This Puts You</h2>
+          {{SITUATION_ITEMS}}
+        </div>
+        <div class="p2-right">
+          <h2 class="p2-header">The Questions That Matter</h2>
+          {{QUESTIONS_ANSWERED}}
+          <div class="p2-quote">{{PULL_QUOTE}}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 3 -->
+  <div class="page">
+    <div class="p3-layout">
+      <div class="p3-content">
+        <h2 class="p2-header">Is This Worth the Signal?</h2>
+        <div class="features-grid">
+          {{WHY_SCALER_FEATURES}}
+        </div>
+        <div class="cta-section">
+          <div class="cta-left">
+            <h2 class="cta-title">{{NEXT_STEP_TITLE}}</h2>
+            <p class="cta-body">{{NEXT_STEP_BODY}}</p>
+            <div class="pills">
+              {{WHY_TAKE_IT_PILLS}}
+            </div>
+          </div>
+          <div class="cta-right">
+            <div class="steps">
+              <div class="step1"></div>
+              <div class="step2"></div>
+              <div class="step3"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
