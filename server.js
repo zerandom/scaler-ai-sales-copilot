@@ -14,11 +14,16 @@ import { benchmarkPersonas, detectPersonaStrategy } from "./lib/personas.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const supabaseUrl = (process.env.SUPABASE_URL || "").replace(/\/rest\/v1\/?$/, "");
-const supabase = createClient(
-  supabaseUrl,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ""
-);
+const supabaseUrl = (process.env.SUPABASE_URL || "https://placeholder.supabase.co").replace(/\/rest\/v1\/?$/, "");
+let supabase;
+try {
+  supabase = createClient(
+    supabaseUrl,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder_key"
+  );
+} catch (err) {
+  console.warn("Supabase init bypassed on boot:", err.message);
+}
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
