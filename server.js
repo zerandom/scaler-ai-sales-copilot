@@ -834,25 +834,22 @@ async function generateLeadAsset({ leadProfile, transcript, insights, evidence, 
     const parsed = JSON.parse(payload);
     return await materializeLeadAsset(
       {
-        coverMessage:
-          typeof parsed.cover_message === "string" ? parsed.cover_message : fallback.coverMessage,
-        subtitle: typeof parsed.subtitle === "string" ? parsed.subtitle : fallback.subtitle,
-        page1Headline: parsed.page1_headline || fallback.page1Headline,
-        page1Tagline: parsed.page1_tagline || fallback.page1Tagline,
-        situationItems: Array.isArray(parsed.situation_items) && parsed.situation_items.length
-          ? parsed.situation_items : fallback.situationItems,
-        questionsAnswered: Array.isArray(parsed.questions_answered) && parsed.questions_answered.length
-          ? parsed.questions_answered : fallback.questionsAnswered,
-        pullQuote: typeof parsed.pull_quote === "string" ? parsed.pull_quote : fallback.pullQuote,
-        bottomLine: typeof parsed.bottom_line === "string" ? parsed.bottom_line : fallback.bottomLine,
-        whyScalerFeatures: Array.isArray(parsed.why_scaler_features) && parsed.why_scaler_features.length
-          ? parsed.why_scaler_features : fallback.whyScalerFeatures,
-        nextStepTitle:
-          typeof parsed.next_step_title === "string" ? parsed.next_step_title : fallback.nextStepTitle,
-        nextStepBody:
-          typeof parsed.next_step_body === "string" ? parsed.next_step_body : fallback.nextStepBody,
-        whyTakeIt: Array.isArray(parsed.why_take_it) && parsed.why_take_it.length
-          ? parsed.why_take_it : fallback.whyTakeIt,
+        coverMessage: parsed.cover_message || parsed.coverMessage || fallback.coverMessage,
+        subtitle: parsed.subtitle || fallback.subtitle,
+        page1Headline: parsed.page1_headline || parsed.page1Headline || fallback.page1Headline,
+        page1Tagline: parsed.page1_tagline || parsed.page1Tagline || fallback.page1Tagline,
+        situationItems: (Array.isArray(parsed.situation_items) && parsed.situation_items.length) 
+          ? parsed.situation_items : ((Array.isArray(parsed.situationItems) && parsed.situationItems.length) ? parsed.situationItems : fallback.situationItems),
+        questionsAnswered: (Array.isArray(parsed.questions_answered) && parsed.questions_answered.length) 
+          ? parsed.questions_answered : ((Array.isArray(parsed.questionsAnswered) && parsed.questionsAnswered.length) ? parsed.questionsAnswered : fallback.questionsAnswered),
+        pullQuote: parsed.pull_quote || parsed.pullQuote || fallback.pullQuote,
+        bottomLine: parsed.bottom_line || parsed.bottomLine || fallback.bottomLine,
+        whyScalerFeatures: (Array.isArray(parsed.why_scaler_features) && parsed.why_scaler_features.length) 
+          ? parsed.why_scaler_features : ((Array.isArray(parsed.whyScalerFeatures) && parsed.whyScalerFeatures.length) ? parsed.whyScalerFeatures : fallback.whyScalerFeatures),
+        nextStepTitle: parsed.next_step_title || parsed.nextStepTitle || fallback.nextStepTitle,
+        nextStepBody: parsed.next_step_body || parsed.nextStepBody || fallback.nextStepBody,
+        whyTakeIt: (Array.isArray(parsed.why_take_it) && parsed.why_take_it.length) 
+          ? parsed.why_take_it : ((Array.isArray(parsed.whyTakeIt) && parsed.whyTakeIt.length) ? parsed.whyTakeIt : fallback.whyTakeIt),
       },
       strategy,
       leadProfile,
@@ -1196,6 +1193,8 @@ async function runChatCompletion({ model, system, user, temperature }) {
     content = content.replace(/^```[a-zA-Z]*\n?/, "");
     content = content.replace(/\n?```$/, "");
   }
+  
+  content = content.replace(/,\s*([\]}])/g, "$1");
   
   return content.trim();
 }
