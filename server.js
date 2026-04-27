@@ -4,7 +4,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
 import multer from "multer";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { renderPdf } from "./lib/render-pdf.js";
 
 import "./lib/load-env.js";
