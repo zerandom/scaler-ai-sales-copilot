@@ -247,13 +247,19 @@ app.post("/api/approve-send", async (req, res) => {
       audience: "lead",
     });
 
-    // Supabase Integration: Log generation and status
-    await logGenerationToSupabase({
-      leadId: asset.leadId,
-      pdfUrl: asset.pdfUrl,
-      whatsappStatus: sendResult.status,
-      whatsappSid: sendResult.sid || null,
-    });
+    // Supabase Integration: Log generation and status (non-fatal)
+    try {
+      if (supabase) {
+        await logGenerationToSupabase({
+          leadId: asset.leadId,
+          pdfUrl: asset.pdfUrl,
+          whatsappStatus: sendResult.status,
+          whatsappSid: sendResult.sid || null,
+        });
+      }
+    } catch (logErr) {
+      console.warn("Supabase log failed (non-fatal):", logErr.message);
+    }
 
     asset.approval = {
       status: "sent",
@@ -867,6 +873,12 @@ async function generateLeadAsset({ leadProfile, transcript, insights, evidence, 
 
 function buildFallbackLeadAsset({ leadProfile, insights, evidence, strategy }) {
   const first = leadProfile.name.split(" ")[0];
+  const roleAtCompany = [leadProfile.role, leadProfile.company].filter(Boolean).join(" at ") || "your current role";
+  const expStr = leadProfile.experience ? `${leadProfile.experience}` : "Several years";
+  const goal = insights?.goals?.[0] || "move into higher-impact roles";
+  const barrier = insights?.purchase_barriers?.[0] || "evaluating if the investment is right";
+  const explicitQ = insights?.explicit_questions?.[0] || "whether the program delivers real outcomes";
+  const implicitQ = insights?.implicit_questions?.[0] || "whether the peer group is at the right level";
 
   if (strategy.key === "senior-operator") {
     return {
@@ -931,33 +943,61 @@ function buildFallbackLeadAsset({ leadProfile, insights, evidence, strategy }) {
   }
 
   return {
-    coverMessage: `Hi ${first}, sharing a personalized summary from our call — focused on the move you want to make into product and AI roles, and where Scaler appears to add real leverage.`,
-    subtitle: "Built for your goals. Backed by real outcomes.",
-    page1Headline: "Your Transition Path",
-    page1Tagline: "A snapshot of your current situation and goals",
+    coverMessage: `Hi ${first}, following up from our conversation — here's a focused summary around your goals and the questions you raised.`,
+    subtitle: "Built around what you shared. Focused on what matters to you.",
+    page1Headline: "Your Path Forward",
+    page1Tagline: "A summary built from your conversation",
     situationItems: [
-      { icon_letter: "R", title: `${leadProfile.experience || "4 years"} at ${leadProfile.company || leadProfile.role || "a service company"}`, description: "Working on backend systems with strong fundamentals and production experience." },
-      { icon_letter: "A", title: "Actively upskilling", description: "Completed AWS certification — a clear signal of your intent to grow." },
-      { icon_letter: "C", title: "Career crossroads", description: "Ready to move from service-based to product company and AI-driven roles." },
-      { icon_letter: "G", title: "The good news", description: "You already have the right foundation. You don't need to start from scratch — you need the right direction and depth.", is_good_news: true },
+      {
+        icon_letter: expStr[0].toUpperCase(),
+        title: `${expStr} in ${roleAtCompany}`,
+        description: "You have solid experience and a clear sense of where you want to go next.",
+      },
+      {
+        icon_letter: "G",
+        title: "Your goal",
+        description: `You want to ${goal}.`,
+      },
+      {
+        icon_letter: "?",
+        title: "What you're weighing",
+        description: `You're ${barrier}.`,
+      },
+      {
+        icon_letter: "✓",
+        title: "The good news",
+        description: "You already have the foundation. The right next step can accelerate everything.",
+        is_good_news: true,
+      },
     ],
     questionsAnswered: [
-      { icon_letter: "F", question: "Why not just learn from free resources like Andrew Ng courses?", answer: "Content is available, but structure, depth, mentorship, peer group and real-world projects make the real difference in career transition." },
-      { icon_letter: "$", question: "Is the ROI worth 3.5L?", answer: "The real ROI is not just in salary jump (14 to 16 LPA) — it's the shift from service-based to product-based roles, which compounds over your career." },
-      { icon_letter: "C", question: "Will I learn practical AI or just theory?", answer: "The program focuses on building production-ready AI systems — RAG, Agents, Evaluation, and more. You build throughout, not just at the end." },
+      {
+        icon_letter: "Q",
+        question: explicitQ,
+        answer: "Scaler's program is built around applied outcomes — real projects, practitioner mentors, and structured career support. The assessment gives you a personalised view.",
+      },
+      {
+        icon_letter: "P",
+        question: implicitQ,
+        answer: `For someone with your background in ${roleAtCompany}, peer cohort quality and mentor access are the real differentiators. Ask for outcome data specific to your experience level.`,
+      },
+      {
+        icon_letter: "$",
+        question: "Is the investment worth it at my stage?",
+        answer: "The shift to product-focused or AI roles compounds over a career. Structure, accountability, and peer cohort make the difference — not just access to content.",
+      },
     ],
-    pullQuote: "It's not just about a job change. It's about building a career that compounds over the next 5-10 years.",
-    bottomLine: "This program is designed for engineers like you who want to build, ship, and lead AI products — not just learn concepts.",
+    pullQuote: "The right program doesn't add noise — it removes it and gives you a clear path forward.",
+    bottomLine: "Based on what you shared, this is worth a closer look — the assessment will tell you exactly where you stand without any commitment.",
     whyScalerFeatures: [
-      { icon_letter: "C", title: "Industry-Relevant Curriculum", description: "Focused on the skills top product companies are hiring for." },
-      { icon_letter: "P", title: "Learn from Top Practitioners", description: "Instructors who have built and scaled AI systems in leading tech companies." },
-      { icon_letter: "AI", title: "Build Real AI Systems", description: "Hands-on projects with LLMs, Agents, RAG, Vector DBs and more." },
-      { icon_letter: "S", title: "Career Support That Works", description: "Resume, interviews, referrals and mock interviews to help you land the role." },
+      { icon_letter: "C", title: "Industry-Relevant Curriculum", description: "Focused on the skills top product companies are actively hiring for." },
+      { icon_letter: "P", title: "Learn from Practitioners", description: "Instructors who have built and shipped AI systems at scale, not academics." },
+      { icon_letter: "AI", title: "Build Real AI Systems", description: "Hands-on work with LLMs, Agents, RAG, Vector DBs and production deployment." },
+      { icon_letter: "S", title: "Career Support That Works", description: "Resume, mock interviews, referrals, and job support until you land the role." },
     ],
     nextStepTitle: "Your Next Move",
-    nextStepBody: "The assessment helps evaluate your current depth and recommend the right cohort. It's the fastest way to see if the peer bar matches yours.",
-    whyTakeIt: ["Understand your applied AI readiness", "See if the cohort matches your level", "Make a grounded, data-driven decision"],
-  };
+    nextStepBody: "Take the free assessment — it will show you exactly where you stand and what the right path looks like, with no obligation.",
+    whyTakeIt: ["Understand your current depth", "Get a personalised learning roadmap", "Make a confident, informed decision"],
 }
 
 
