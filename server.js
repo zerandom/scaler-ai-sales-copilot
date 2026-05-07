@@ -1194,6 +1194,12 @@ async function sendWhatsappMessage({ to, body, mediaUrl, requiresMedia = false, 
         details: payload,
       };
     }
+    return {
+      status: "sent",
+      audience,
+      sid: payload.sid,
+      to: payload.to,
+    };
   } catch (error) {
     console.error("Twilio fetch failed:", error.message);
     return {
@@ -1202,13 +1208,6 @@ async function sendWhatsappMessage({ to, body, mediaUrl, requiresMedia = false, 
       error: error.message || "Twilio network error.",
     };
   }
-
-  return {
-    status: "sent",
-    audience,
-    sid: payload.sid,
-    to: payload.to,
-  };
 }
 
 async function runChatCompletion({ model, system, user, temperature }) {
