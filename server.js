@@ -998,6 +998,7 @@ function buildFallbackLeadAsset({ leadProfile, insights, evidence, strategy }) {
     nextStepTitle: "Your Next Move",
     nextStepBody: "Take the free assessment — it will show you exactly where you stand and what the right path looks like, with no obligation.",
     whyTakeIt: ["Understand your current depth", "Get a personalised learning roadmap", "Make a confident, informed decision"],
+  };
 }
 
 
