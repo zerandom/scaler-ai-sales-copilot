@@ -964,7 +964,7 @@ function buildFallbackLeadAsset({ leadProfile, insights, evidence, strategy }) {
         description: `You're ${barrier}.`,
       },
       {
-        icon_letter: "✓",
+        icon_letter: "Y",
         title: "The good news",
         description: "You already have the foundation. The right next step can accelerate everything.",
         is_good_news: true,
@@ -1151,7 +1151,9 @@ async function sendWhatsappMessage({ to, body, mediaUrl, requiresMedia = false, 
 
   const params = new URLSearchParams();
   params.set("To", `whatsapp:${formattedTo}`);
-  params.set("From", process.env.TWILIO_WHATSAPP_FROM);
+  const fromNumber = process.env.TWILIO_WHATSAPP_FROM.trim();
+  const formattedFrom = fromNumber.startsWith("whatsapp:") ? fromNumber : `whatsapp:${fromNumber}`;
+  params.set("From", formattedFrom);
   
   // If mediaUrl is not public (e.g. local /assets/ path), Twilio will fail.
   // Fallback: append the URL to the text body instead of using MediaUrl.
@@ -1164,29 +1166,40 @@ async function sendWhatsappMessage({ to, body, mediaUrl, requiresMedia = false, 
     if (mediaUrl && isPublicUrl) params.set("MediaUrl", mediaUrl);
   }
 
-  const auth = Buffer.from(
-    `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
-  ).toString("base64");
+  const accountSid = process.env.TWILIO_ACCOUNT_SID.trim();
+  const authToken = process.env.TWILIO_AUTH_TOKEN.trim();
 
-  const response = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${auth}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: params.toString(),
+  const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+
+  try {
+    const response = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${auth}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params.toString(),
+      }
+    );
+
+    const payload = await response.json();
+    if (!response.ok) {
+      console.error("Twilio API Error:", payload);
+      return {
+        status: "error",
+        audience,
+        error: payload.message || "Twilio send failed.",
+        details: payload,
+      };
     }
-  );
-
-  const payload = await response.json();
-  if (!response.ok) {
+  } catch (error) {
+    console.error("Twilio fetch failed:", error.message);
     return {
       status: "error",
       audience,
-      error: payload.message || "Twilio send failed.",
-      details: payload,
+      error: error.message || "Twilio network error.",
     };
   }
 
